@@ -1,0 +1,29 @@
+[package]
+name = "nping"
+version = "0.1.0-beta.1"
+description = "Nostr relay connectivity tester for the ndisc suite"
+authors = ["xjmzx"]
+edition = "2021"
+
+[lib]
+# The `_lib` suffix may seem redundant but it is necessary
+# to make the lib name unique and wouldn't conflict with the bin name.
+# This seems to be only an issue on Windows, see https://github.com/rust-lang/cargo/issues/8519
+name = "nping_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-opener = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+url = "2"
+# Blocking WebSocket client for the connect + REQ/EOSE round-trip. rustls
+# (+ webpki bundled roots) so wss:// works without a system OpenSSL/cert dep.
+tungstenite = { version = "0.21", features = ["rustls-tls-webpki-roots"] }
+# Blocking HTTP for the NIP-11 relay-information document. Runs in Rust (not
+# the webview) precisely to dodge the browser CORS wall most relays trip.
+ureq = { version = "2", features = ["tls"] }
