@@ -1,5 +1,29 @@
 # Changelog
 
+## v0.1.0-beta.4
+
+### Fixed
+
+- **The app icon had lost its transparency, and its artwork with it.** All 15
+  PNGs under `src-tauri/icons` were 100% opaque with a completely flat alpha
+  channel, and 13% of `icon.png` was pure white — the white `ping` wordmark had
+  collapsed into solid dark shapes, so the icon was not merely un-transparent
+  but wrong. The corner pixel read `(0,225,255,255)` where the master reads
+  `(0,216,255,13)`. Regenerated with `tauri icon` from that master; the set now
+  carries 52-67% partial alpha and no pure white, and stays legible at 32x32.
+  The master was never damaged, and no other app in the suite was affected —
+  each still matches its own `-sq` master's corner alpha.
+
+### Windows builds
+
+- **The Windows installer has now actually been run.** It installs silently
+  with `/S` to `%LOCALAPPDATA%
+ping`, launches, and the UI renders. This
+  corrects v0.1.0-beta.3's note, which said the installer was known to build
+  but not known to run — true when written, and now settled.
+- Note that shortcuts arrive with `IconLocation` unset, so they inherit the
+  icon from the `.exe`. That is worth knowing alongside the icon fix above.
+
 ## v0.1.0-beta.3
 
 ### Windows builds
