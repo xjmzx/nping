@@ -1,5 +1,28 @@
 # Changelog
 
+## v0.1.0-beta.3
+
+### Windows builds
+
+- The release workflow now builds a **Windows x86_64 NSIS installer**
+  (`nping_<version>_x64-setup.exe`) alongside the Linux `.deb`/`.AppImage` and
+  the macOS `.dmg`. The job is ndisc's, unchanged; like the macOS one it runs
+  after the Linux job and only appends its asset, so the Linux job stays the
+  single owner of the release name and notes.
+- Unsigned, like the rest of the suite. SmartScreen will warn on first run of a
+  new version until the download earns reputation; "More info" then "Run
+  anyway" is the way past it.
+- **This installer is untested.** nping compiles clean on Windows — verified
+  with `cargo check` against a real Windows toolchain — but no build of this
+  app has been installed or launched there. Known to build; not known to run.
+
+### Repository
+
+- Added `.gitattributes` (`* text=auto eol=lf`), which the rest of the suite
+  already carried. Without it, line endings are decided per clone: a Windows
+  checkout reports unchanged files as modified, and a CRLF blob can reach a
+  file the Linux and macOS boxes hold as LF.
+
 ## v0.1.0-beta.2
 
 ### macOS builds
