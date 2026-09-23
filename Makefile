@@ -12,7 +12,9 @@ ICONDIR ?= $(PREFIX)/share/icons/hicolor/scalable/apps
 LINUX_VIEWBOX ?= 49 49 926 926
 
 DESKTOP_OUT := $(APPDIR)/nping.desktop
-TAURI_BIN   := src-tauri/target/release/nping
+# The binary is nping-relay (nmap owns /usr/bin/nping on Debian/Ubuntu);
+# the app is still nping everywhere it is named.
+TAURI_BIN   := src-tauri/target/release/nping-relay
 
 .PHONY: help deps dev build install uninstall check clean icons version install-guard
 
@@ -89,7 +91,7 @@ install-guard:
 
 install: install-guard $(TAURI_BIN)
 	install -d $(BINDIR) $(APPDIR) $(ICONDIR)
-	install -m 0755 $(TAURI_BIN) $(BINDIR)/nping
+	install -m 0755 $(TAURI_BIN) $(BINDIR)/nping-relay
 	@# Linux fill: crop the grid margin on the way in (see LINUX_VIEWBOX).
 	sed '1s|viewBox="[^"]*"|viewBox="$(LINUX_VIEWBOX)"|' icon.svg > $(ICONDIR)/nping.svg
 	chmod 0644 $(ICONDIR)/nping.svg
@@ -104,11 +106,11 @@ install: install-guard $(TAURI_BIN)
 		gtk-update-icon-cache -f -t $(PREFIX)/share/icons/hicolor >/dev/null 2>&1 || true; \
 	fi
 	@echo "installed to $(PREFIX)"
-	@echo "  binary  -> $(BINDIR)/nping"
+	@echo "  binary  -> $(BINDIR)/nping-relay"
 	@echo "  desktop -> $(DESKTOP_OUT)"
 
 uninstall:
-	rm -f $(BINDIR)/nping
+	rm -f $(BINDIR)/nping-relay
 	rm -f $(ICONDIR)/nping.svg
 	rm -f $(DESKTOP_OUT)
 	@if command -v update-desktop-database >/dev/null 2>&1; then \

@@ -1,9 +1,17 @@
 [package]
 name = "nping"
-version = "0.2.0"
+version = "0.2.1"
 description = "Nostr relay connectivity tester for the ndisc suite"
 authors = ["xjmzx"]
 edition = "2021"
+
+# The executable is nping-relay, not nping: Debian/Ubuntu's `nmap` package
+# already ships /usr/bin/nping (its own packet generator), so a .deb claiming
+# that path is refused by dpkg. Renaming the binary sidesteps the clash without
+# renaming the app — productName stays "nping" everywhere it is shown.
+[[bin]]
+name = "nping-relay"
+path = "src/main.rs"
 
 [lib]
 # The `_lib` suffix may seem redundant but it is necessary
