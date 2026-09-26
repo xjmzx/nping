@@ -1,5 +1,40 @@
 # Changelog
 
+## v0.3.0
+
+### Added
+
+- **List view.** The header toggle switches between cards and a one-line-per-
+  relay table: status, url, connect, EOSE, events, software, NIP count and
+  flags. Click a column header to sort (again to reverse, a third time for your
+  own order). Unprobed relays always sort last; sorting by status puts failures
+  first. Clicking a row expands its full card, which is where the url is edited.
+  nping remembers which view you used.
+- **Search** (`/` to focus, Esc to clear) filters both views by url, software,
+  name or description. `nip:42` finds relays that list a NIP, and
+  `is:ok|warn|fail|dup` filters by status. Terms combine.
+- **Duplicate flag.** A relay listed twice (ignoring case and a trailing slash)
+  is marked `dup`.
+- **JSON import / export.** Export writes `nping-relays.json`
+  (`{ "app": "nping", "version": 1, "relays": [...] }`, urls only). Import
+  adds to the list and skips urls already in it. It accepts nping's own
+  export, a plain array of urls, or a NIP-65 relay-list event (or just its
+  `r` tags). The native file dialogs run in Rust, so the webview never gets a
+  general file-read/write command.
+
+### Changed
+
+- **Paged card grid.** At the default 720px window the cards stay a single
+  scrolling column. From 1024px they form two columns and from 1536px three,
+  and wide windows page two rows at a time (six relays at three columns). Flip
+  pages with the footer pager or PageUp/PageDown.
+- **Cards line up.** Every card on a page matches the tallest. The description
+  is a fixed two-line slot and the badge row is always reserved. Stage errors
+  are one line with the full text on hover. So "payment required" and the NIP
+  chips sit at the same height across the grid.
+- The list shortens relay errors to `HTTP 503` or the NIP-01 reason prefix
+  (`auth-required`, `restricted`, …).
+
 ## v0.1.0-beta.4
 
 ### Fixed
