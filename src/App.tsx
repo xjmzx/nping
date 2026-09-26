@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Radio, Plus, Zap, RotateCcw } from "lucide-react";
+import { Radio, Plus, Zap, RotateCcw, ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "./lib/cn";
 import { probeRelay, type RelayProbe } from "./lib/tauri";
 import { RelayCard } from "./components/RelayCard";
@@ -15,6 +15,28 @@ const STORAGE_KEY = "nping.relays";
 interface Row {
   id: string;
   url: string;
+}
+
+// Grid columns track the Tailwind breakpoints used on the relay grid
+// (lg = 1024px → 2, 2xl = 1536px → 3). Keep the two in step.
+const MQ_2COL = "(min-width: 1024px)";
+const MQ_3COL = "(min-width: 1536px)";
+
+function currentColumns(): number {
+  if (window.matchMedia(MQ_3COL).matches) return 3;
+  if (window.matchMedia(MQ_2COL).matches) return 2;
+  return 1;
+}
+
+function useColumns(): number {
+  const [cols, setCols] = useState(currentColumns);
+  useEffect(() => {
+    const update = () => setCols(currentColumns());
+    const mqs = [MQ_2COL, MQ_3COL].map((q) => window.matchMedia(q));
+    mqs.forEach((m) => m.addEventListener("change", update));
+    return () => mqs.forEach((m) => m.removeEventListener("change", update));
+  }, []);
+  return cols;
 }
 
 function newId(): string {
@@ -42,6 +64,35 @@ export default function App() {
   const [probes, setProbes] = useState<Record<string, RelayProbe>>({});
   const [checking, setChecking] = useState<Record<string, boolean>>({});
   const [upleb, setUpleb] = useState(false);
+  const [page, setPage] = useState(0);
+
+  // Wide windows page two rows of cards at a time (6 at 3 columns); the
+  // single-column default window just scrolls.
+  const cols = useColumns();
+  const pageSize = cols > 1 ? cols * 2 : Infinity;
+  const pageCount = Math.max(1, Math.ceil(rows.length / pageSize));
+  const safePage = Math.min(page, pageCount - 1);
+  const visibleRows =
+    pageSize === Infinity
+      ? rows
+      : rows.slice(safePage * pageSize, (safePage + 1) * pageSize);
+
+  useEffect(() => {
+    if (page !== safePage) setPage(safePage);
+  }, [page, safePage]);
+
+  // PageUp / PageDown flip pages, except while editing a relay url.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement) return;
+      if (e.key === "PageDown") setPage((p) => Math.min(p + 1, pageCount - 1));
+      else if (e.key === "PageUp") setPage((p) => Math.max(p - 1, 0));
+      else return;
+      e.preventDefault();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [pageCount]);
 
   // Persist the relay list (urls only) whenever it changes.
   useEffect(() => {
@@ -103,6 +154,8 @@ export default function App() {
 
   const addRow = useCallback(() => {
     setRows((rs) => [...rs, { id: newId(), url: "" }]);
+    // Jump to the page the new card lands on (clamped once rows update).
+    setPage(Number.MAX_SAFE_INTEGER);
   }, []);
 
   const removeRow = useCallback((id: string) => {
@@ -118,6 +171,7 @@ export default function App() {
     setRows(DEFAULT_RELAYS.map((url) => ({ id: newId(), url })));
     setProbes({});
     setChecking({});
+    setPage(0);
   }, []);
 
   const anyChecking = Object.values(checking).some(Boolean);
@@ -184,13 +238,23 @@ export default function App() {
 
       {/* relay list */}
       <main className="flex-1 overflow-y-auto px-5 py-4">
-        <div className="flex flex-col gap-3 max-w-[680px] mx-auto">
+        {/* one column at the default window size; flows into a grid when the
+            window is widened, so six relays fit on a maximised screen */}
+        <div
+          className={cn(
+            // auto-rows-fr: every card on a page matches the tallest one
+            "grid gap-3 mx-auto auto-rows-fr",
+            rows.length === 0
+              ? "max-w-[680px]"
+              : "grid-cols-1 max-w-[680px] lg:grid-cols-2 lg:max-w-[1400px] 2xl:grid-cols-3 2xl:max-w-[1880px]",
+          )}
+        >
           {rows.length === 0 ? (
             <div className="text-center text-muted text-sm py-16">
               No relays. Click <span className="text-fg">Add</span> to start.
             </div>
           ) : (
-            rows.map((row) => (
+            visibleRows.map((row) => (
               <RelayCard
                 key={row.id}
                 url={row.url}
@@ -219,6 +283,29 @@ export default function App() {
             {summary.fail > 0 && (
               <span className="text-alert">{summary.fail} fail</span>
             )}
+          </div>
+        )}
+        {pageCount > 1 && (
+          <div className="ml-auto flex items-center gap-1 font-mono tabular-nums">
+            <button
+              onClick={() => setPage(safePage - 1)}
+              disabled={safePage === 0}
+              title="Previous page (PageUp)"
+              className="p-1 rounded-md hover:text-fg hover:bg-fg/5 disabled:opacity-30 transition-colors"
+            >
+              <ChevronLeft size={16} />
+            </button>
+            <span>
+              {safePage + 1} / {pageCount}
+            </span>
+            <button
+              onClick={() => setPage(safePage + 1)}
+              disabled={safePage === pageCount - 1}
+              title="Next page (PageDown)"
+              className="p-1 rounded-md hover:text-fg hover:bg-fg/5 disabled:opacity-30 transition-colors"
+            >
+              <ChevronRight size={16} />
+            </button>
           </div>
         )}
         <span className="ml-auto opacity-60">ndisc suite</span>

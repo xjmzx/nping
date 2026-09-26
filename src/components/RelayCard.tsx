@@ -34,7 +34,7 @@ function StageRow({
   return (
     <div className="flex items-baseline gap-2.5">
       <StatusDot status={status} size={8} className="translate-y-[1px]" />
-      <span className="flex items-center gap-1.5 w-24 shrink-0 text-muted">
+      <span className="flex items-center gap-1.5 w-28 shrink-0 whitespace-nowrap text-muted">
         <span className="text-muted/70">{icon}</span>
         {label}
       </span>
@@ -77,7 +77,7 @@ export function RelayCard({ url, probe, checking, onChange, onPing, onRemove }: 
   const expanded = checking || !!probe;
 
   return (
-    <div className="rounded-xl bg-panel border border-surface/60 shadow-md p-3.5 flex flex-col gap-3">
+    <div className="h-full rounded-xl bg-panel border border-surface/60 shadow-md p-3.5 flex flex-col gap-3">
       {/* header: status + editable url + actions */}
       <div className="flex items-center gap-2.5">
         <StatusDot status={overall} size={12} />
@@ -190,16 +190,18 @@ export function RelayCard({ url, probe, checking, onChange, onPing, onRemove }: 
             )}
           </StageRow>
 
-          {/* NIP-11 detail: supported NIPs + limitation badges */}
+          {/* NIP-11 detail: supported NIPs + limitation badges. Description
+              and badges are fixed-height slots, rendered even when empty, so
+              the NIP chips line up across every card in the grid. */}
           {probe?.info && (
             <div className="pl-[34px] flex flex-col gap-2">
-              {probe.info.description && (
-                <p className="text-xs text-muted leading-snug">
-                  {probe.info.description}
-                </p>
-              )}
-              {(probe.info.paymentRequired || probe.info.authRequired) && (
-                <div className="flex flex-wrap gap-1.5">
+              <p
+                title={probe.info.description ?? undefined}
+                className="text-xs text-muted leading-snug line-clamp-2 min-h-[33px]"
+              >
+                {probe.info.description}
+              </p>
+              <div className="flex flex-wrap gap-1.5 h-5 overflow-hidden">
                   {probe.info.paymentRequired && (
                     <Badge tone="warn" icon={<Coins size={11} />}>
                       payment required
@@ -210,8 +212,7 @@ export function RelayCard({ url, probe, checking, onChange, onPing, onRemove }: 
                       auth required
                     </Badge>
                   )}
-                </div>
-              )}
+              </div>
               {probe.info.supportedNips.length > 0 && (
                 <div className="flex flex-wrap gap-1">
                   {probe.info.supportedNips.map((n) => (
