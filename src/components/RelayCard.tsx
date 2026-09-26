@@ -12,7 +12,7 @@ interface Props {
   onRemove: () => void;
 }
 
-function overallStatus(probe: RelayProbe | undefined, checking: boolean): Status {
+export function overallStatus(probe: RelayProbe | undefined, checking: boolean): Status {
   if (checking) return "checking";
   if (!probe) return "idle";
   if (!probe.connectOk) return "fail";
@@ -134,7 +134,10 @@ export function RelayCard({ url, probe, checking, onChange, onPing, onRemove }: 
                 )}
               </span>
             ) : probe?.connectError ? (
-              <span className="text-alert font-mono text-xs break-all">
+              <span
+                title={probe.connectError}
+                className="block truncate text-alert font-mono text-xs"
+              >
                 {probe.connectError}
               </span>
             ) : (
@@ -157,7 +160,10 @@ export function RelayCard({ url, probe, checking, onChange, onPing, onRemove }: 
                 </span>
               </span>
             ) : probe.reqError ? (
-              <span className="text-warn font-mono text-xs break-all">
+              <span
+                title={probe.reqError}
+                className="block truncate text-warn font-mono text-xs"
+              >
                 {probe.reqError}
               </span>
             ) : (
@@ -182,7 +188,10 @@ export function RelayCard({ url, probe, checking, onChange, onPing, onRemove }: 
                 )}
               </span>
             ) : probe?.infoError ? (
-              <span className="text-muted font-mono text-xs break-all">
+              <span
+                title={probe.infoError}
+                className="block truncate text-muted font-mono text-xs"
+              >
                 {probe.infoError}
               </span>
             ) : (
@@ -191,8 +200,9 @@ export function RelayCard({ url, probe, checking, onChange, onPing, onRemove }: 
           </StageRow>
 
           {/* NIP-11 detail: supported NIPs + limitation badges. Description
-              and badges are fixed-height slots, rendered even when empty, so
-              the NIP chips line up across every card in the grid. */}
+              and badges are fixed-height slots, rendered even when empty, and
+              the stage errors above are clamped to one line (full text on
+              hover), so the NIP chips line up across every card in the grid. */}
           {probe?.info && (
             <div className="pl-[34px] flex flex-col gap-2">
               <p
@@ -231,7 +241,7 @@ export function RelayCard({ url, probe, checking, onChange, onPing, onRemove }: 
 
           {/* a NOTICE the relay sent during the subscription */}
           {probe?.notice && (
-            <div className="pl-[34px] text-xs text-warn/90 break-words">
+            <div title={probe.notice} className="pl-[34px] text-xs text-warn/90 truncate">
               NOTICE: {probe.notice}
             </div>
           )}
@@ -270,7 +280,7 @@ function pad2(n: number): string {
 }
 
 // Relay software is often reported as a repo URL — show just the tail.
-function prettySoftware(s: string): string {
+export function prettySoftware(s: string): string {
   const cleaned = s.replace(/^https?:\/\//, "").replace(/\.git$/, "");
   const parts = cleaned.split("/").filter(Boolean);
   return parts.length ? parts[parts.length - 1] : s;

@@ -39,3 +39,15 @@ export interface RelayProbe {
 export function probeRelay(url: string): Promise<RelayProbe> {
   return invoke("probe_relay", { url });
 }
+
+/** Save the relay-list JSON via a native save dialog. Resolves to the path
+ *  written, or null if the user cancelled. */
+export function exportRelays(contents: string): Promise<string | null> {
+  return invoke("export_relays", { contents });
+}
+
+/** Read a JSON file the user picks in a native open dialog. Resolves to its
+ *  text, or null if the user cancelled. */
+export function importRelays(): Promise<string | null> {
+  return invoke("import_relays");
+}

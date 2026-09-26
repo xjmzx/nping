@@ -368,11 +368,54 @@ fn parse_nip11(j: &serde_json::Value) -> Nip11 {
     }
 }
 
+// ── relay-list import / export ──────────────────────────────────────────
+// The dialog runs here, not in the webview, so the only files these touch are
+// ones the user picked in a native dialog. The JSON itself is built and parsed
+// in the frontend (src/lib/relays.ts); Rust just moves the text.
+
+/// Save `contents` to a user-chosen file. `Ok(None)` if the dialog was
+/// cancelled, otherwise the path written.
+#[tauri::command]
+async fn export_relays(app: tauri::AppHandle, contents: String) -> Result<Option<String>, String> {
+    use tauri_plugin_dialog::DialogExt;
+    let Some(fp) = app
+        .dialog()
+        .file()
+        .add_filter("JSON", &["json"])
+        .set_file_name("nping-relays.json")
+        .blocking_save_file()
+    else {
+        return Ok(None);
+    };
+    let path = fp.into_path().map_err(|e| e.to_string())?;
+    std::fs::write(&path, contents).map_err(|e| format!("{}: {e}", path.display()))?;
+    Ok(Some(path.display().to_string()))
+}
+
+/// Read a user-chosen JSON file. `Ok(None)` if the dialog was cancelled.
+#[tauri::command]
+async fn import_relays(app: tauri::AppHandle) -> Result<Option<String>, String> {
+    use tauri_plugin_dialog::DialogExt;
+    let Some(fp) = app
+        .dialog()
+        .file()
+        .add_filter("JSON", &["json"])
+        .blocking_pick_file()
+    else {
+        return Ok(None);
+    };
+    let path = fp.into_path().map_err(|e| e.to_string())?;
+    std::fs::read_to_string(&path)
+        .map(Some)
+        .map_err(|e| format!("{}: {e}", path.display()))
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![probe_relay])
+        .plugin(tauri_plugin_dialog::init())
+        .invoke_handler(tauri::generate_handler![probe_relay, export_relays, import_relays])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
