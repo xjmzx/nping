@@ -1,5 +1,40 @@
 # Changelog
 
+## v0.4.0
+
+### Added
+
+- **Hosts view** (server icon, top left) — service checks for whole machines,
+  alongside the relay tester. Per host, each check can be switched on or off
+  (off keeps its settings and leaves it out of the host's status):
+  - **DNS** — A/AAAA lookup, timed; skipped for an IP address.
+  - **Ping** — ICMP via the system `ping`. No replies is amber, not red.
+  - **Ports** — TCP connect per listed port. `!22` means *should be closed*:
+    it passes when refused or silent and fails if ever open. Chips in the
+    editor flip a port between open/closed or remove it.
+  - **TLS** — handshake, chain verification against the name (or a separate
+    **TLS name**, for a host entered as an IP), and the certificate's expiry,
+    issuer, names and fingerprint. A failing certificate is still read, and
+    errors are plain English ("certificate is for example.com, not …"). Amber
+    under 14 days.
+  - **HTTP(S)** — GET a page following redirects: status, time, final url,
+    server, and optionally whether the body contains some text.
+  - **Relay** — the relay check against a url on that host.
+  - **LND** — clearnet p2p port, REST `GET /v1/state` (the one endpoint LND
+    serves without a macaroon — nping still holds no keys), and the **onion**
+    address dialled through the local Tor SOCKS proxy (`127.0.0.1:9050`;
+    paste the URI from `lncli getinfo`). Reachable over either path is green;
+    a miss the other path covers is shown in grey.
+- **Results survive a restart**, for hosts and relays, with the time they were
+  taken ("checked 14:02 · 3 min ago" / "pinged …"). Editing what a host checks
+  drops its result; renaming, removing a port or flipping `22` → `!22` don't.
+- Host list JSON import/export (`nping-hosts.json`); no hosts ship with the app.
+- Header tagline on wide windows: "relay pings · service checks for VPS hosts".
+
+### Fixed
+
+- The list view's sticky column header let rows show through above it.
+
 ## v0.3.0
 
 ### Added

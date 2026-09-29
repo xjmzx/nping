@@ -2,11 +2,16 @@ import { Plug, Radio, Info, RefreshCw, Trash2, Lock, Coins } from "lucide-react"
 import { cn } from "../lib/cn";
 import { StatusDot, type Status } from "./StatusDot";
 import type { RelayProbe } from "../lib/tauri";
+import { agoText, clockText } from "../lib/hosts";
 
 interface Props {
   url: string;
   probe?: RelayProbe;
   checking: boolean;
+  /** When `probe` was taken (epoch ms), and the clock to show its age by. */
+  pingedAt?: number;
+  /** Defaults to render time; pass a ticking value to keep "ago" fresh. */
+  now?: number;
   onChange: (url: string) => void;
   onPing: () => void;
   onRemove: () => void;
@@ -20,7 +25,7 @@ export function overallStatus(probe: RelayProbe | undefined, checking: boolean):
   return "ok";
 }
 
-function StageRow({
+export function StageRow({
   icon,
   label,
   status,
@@ -43,7 +48,16 @@ function StageRow({
   );
 }
 
-export function RelayCard({ url, probe, checking, onChange, onPing, onRemove }: Props) {
+export function RelayCard({
+  url,
+  probe,
+  checking,
+  pingedAt,
+  now,
+  onChange,
+  onPing,
+  onRemove,
+}: Props) {
   const overall = overallStatus(probe, checking);
 
   const connectStatus: Status = checking
@@ -119,7 +133,7 @@ export function RelayCard({ url, probe, checking, onChange, onPing, onRemove }: 
 
       {/* diagnostics */}
       {expanded && (
-        <div className="flex flex-col gap-2 text-sm pl-0.5">
+        <div className="flex-1 flex flex-col gap-2 text-sm pl-0.5">
           <StageRow icon={<Plug size={13} />} label="Connect" status={connectStatus}>
             {checking && !probe ? (
               <span className="text-muted">Connecting…</span>
@@ -243,6 +257,15 @@ export function RelayCard({ url, probe, checking, onChange, onPing, onRemove }: 
           {probe?.notice && (
             <div title={probe.notice} className="pl-[34px] text-xs text-warn/90 truncate">
               NOTICE: {probe.notice}
+            </div>
+          )}
+
+          {!checking && pingedAt != null && (
+            <div
+              title={new Date(pingedAt).toLocaleString()}
+              className="pl-[34px] mt-auto text-[11px] text-muted/70"
+            >
+              pinged {clockText(pingedAt)} · {agoText(pingedAt, now ?? Date.now())}
             </div>
           )}
         </div>

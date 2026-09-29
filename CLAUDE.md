@@ -30,7 +30,10 @@ Release path is `tauri build`, which runs Vite. **Never `cargo build --release`*
   side. One such typo survived into `nchat`'s workflow ("unlike nchat, nchat").
 - **No keys and no database**, and it should stay that way. It speaks the
   protocol only to test it: raw websocket connect, a `REQ`/`EOSE` exchange, and
-  the NIP-11 info document.
+  the NIP-11 info document. The Hosts view (`src-tauri/src/host.rs`) keeps the
+  rule: its LND check uses only REST `/v1/state`, which needs no macaroon.
+- **Never seed hosts.** The Hosts list starts empty on purpose; server
+  addresses don't go in this public repo, not even as defaults.
 - **Checks run in Rust** (`tungstenite-rustls` + `ureq`), which is what dodges
   browser CORS. Moving a check into the webview to simplify it will break
   against relays that send no CORS headers.

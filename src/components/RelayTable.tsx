@@ -12,6 +12,8 @@ export interface TableItem {
   checking: boolean;
   status: Status;
   dup: boolean;
+  /** When `probe` was taken (epoch ms). */
+  pingedAt?: number;
 }
 
 interface Props {
@@ -60,7 +62,9 @@ export function RelayTable({
   const span = wide ? COLUMNS.length + 2 : COLUMNS.length - 1;
   return (
     <table className="w-full table-fixed text-sm border-separate border-spacing-0">
-      <thead className="sticky top-0 z-10 bg-bg">
+      {/* bg on the cells too: with border-separate the thead's own
+          background doesn't paint behind them, and rows show through. */}
+      <thead className="sticky top-0 z-10 bg-bg [&_th]:bg-bg">
         <tr className="text-xs text-muted">
           {COLUMNS.map((c) => (
             <th key={c.key} className={cn("font-normal py-2 px-2 border-b border-surface/60", c.className)}>
@@ -236,6 +240,7 @@ function Row({
               url={it.url}
               probe={it.probe}
               checking={it.checking}
+              pingedAt={it.pingedAt}
               onChange={onChange}
               onPing={onPing}
               onRemove={onRemove}

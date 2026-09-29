@@ -1,6 +1,6 @@
 [package]
 name = "nping"
-version = "0.3.0"
+version = "0.4.0"
 description = "Nostr relay connectivity tester for the ndisc suite"
 authors = ["xjmzx"]
 edition = "2021"
@@ -38,3 +38,10 @@ tungstenite = { version = "0.21", features = ["rustls-tls-webpki-roots"] }
 # Blocking HTTP for the NIP-11 relay-information document. Runs in Rust (not
 # the webview) precisely to dodge the browser CORS wall most relays trip.
 ureq = { version = "2", features = ["tls"] }
+# Host checks (src/host.rs): a direct TLS handshake to read the certificate
+# (expiry, SANs, fingerprint) — including one that fails verification, and
+# LND's self-signed one. Same rustls 0.23 + ring that ureq already pulls in.
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12", "logging"] }
+webpki-roots = "0.26"
+x509-parser = "0.16"
+sha2 = "0.10"

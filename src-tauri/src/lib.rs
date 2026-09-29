@@ -14,6 +14,8 @@
 // blocking thread (spawn_blocking) so many relays probe concurrently from
 // the frontend without stalling the UI thread.
 
+mod host;
+
 use std::io::{Read, Write};
 use std::net::{TcpStream, ToSocketAddrs};
 use std::time::{Duration, Instant};
@@ -373,16 +375,21 @@ fn parse_nip11(j: &serde_json::Value) -> Nip11 {
 // ones the user picked in a native dialog. The JSON itself is built and parsed
 // in the frontend (src/lib/relays.ts); Rust just moves the text.
 
-/// Save `contents` to a user-chosen file. `Ok(None)` if the dialog was
+/// Save `contents` to a user-chosen file (the host list uses it too, with its
+/// own suggested `file_name`). `Ok(None)` if the dialog was
 /// cancelled, otherwise the path written.
 #[tauri::command]
-async fn export_relays(app: tauri::AppHandle, contents: String) -> Result<Option<String>, String> {
+async fn export_relays(
+    app: tauri::AppHandle,
+    contents: String,
+    file_name: Option<String>,
+) -> Result<Option<String>, String> {
     use tauri_plugin_dialog::DialogExt;
     let Some(fp) = app
         .dialog()
         .file()
         .add_filter("JSON", &["json"])
-        .set_file_name("nping-relays.json")
+        .set_file_name(file_name.as_deref().unwrap_or("nping-relays.json"))
         .blocking_save_file()
     else {
         return Ok(None);
@@ -415,7 +422,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
-        .invoke_handler(tauri::generate_handler![probe_relay, export_relays, import_relays])
+        .invoke_handler(tauri::generate_handler![probe_relay, host::probe_host, export_relays, import_relays])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
