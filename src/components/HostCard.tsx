@@ -318,17 +318,23 @@ export function HostCard({
               ) : !relay ? (
                 <span className="text-muted">—</span>
               ) : !relay.connectOk ? (
-                <ErrorText text={relay.connectError} tone="alert" short />
+                <div className="flex flex-col gap-0.5 min-w-0">
+                  <ErrorText text={relay.connectError} tone="alert" short />
+                  <RelayHost url={row.relay} />
+                </div>
               ) : relay.reqEose ? (
-                <span>
+                <span className="block truncate" title={row.relay.trim()}>
                   EOSE
                   <span className="text-muted">
                     {" "}
-                    · connect {relay.connectMs} ms · REQ {relay.reqMs} ms
+                    · connect {relay.connectMs} ms · REQ {relay.reqMs} ms · {relayHost(row.relay)}
                   </span>
                 </span>
               ) : (
-                <ErrorText text={relay.reqError ?? relay.notice} tone="warn" short />
+                <div className="flex flex-col gap-0.5 min-w-0">
+                  <ErrorText text={relay.reqError ?? relay.notice} tone="warn" short />
+                  <RelayHost url={row.relay} />
+                </div>
               )}
             </StageRow>
           )}
@@ -419,6 +425,26 @@ export function HostCard({
 function worstOf(xs: Status[] | undefined): Status {
   if (!xs || xs.length === 0) return "idle";
   return xs.includes("fail") ? "fail" : xs.includes("warn") ? "warn" : "ok";
+}
+
+/** The relay's host (and port, if any), so a url pointing at the wrong box is
+ *  visible on the row: a healthy result alone can't tell you whose relay
+ *  answered. */
+function relayHost(url: string): string {
+  const u = url.trim();
+  try {
+    return new URL(u).host || u;
+  } catch {
+    return u.replace(/^wss?:\/\//, "").replace(/\/.*$/, "");
+  }
+}
+
+function RelayHost({ url }: { url: string }) {
+  return (
+    <span className="block truncate text-xs text-muted" title={url.trim()}>
+      {relayHost(url)}
+    </span>
+  );
 }
 
 function ErrorText({

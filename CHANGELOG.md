@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- **The Relay row names the relay it checked.** A host card's Relay row now
+  ends with the relay's hostname ("EOSE · connect 80 ms · REQ 40 ms ·
+  relay.example.com"), and shows it under an error too; the full url is on
+  hover. A healthy result alone couldn't tell you whose relay answered, so a
+  url copied from another host looked fine.
+
 ## v0.4.1
 
 ### Added
