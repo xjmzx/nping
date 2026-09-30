@@ -9,6 +9,12 @@
   relay.example.com"), and shows it under an error too; the full url is on
   hover. A healthy result alone couldn't tell you whose relay answered, so a
   url copied from another host looked fine.
+- **Cards follow the list view's sort.** Sort by renewal (or anything else)
+  in the list, switch to cards, and they come in that order. With no sort
+  chosen they keep the stored order, as before.
+- **Three host cards across from 1280px** (was 1536px), so a full-screen
+  window on a 14" MacBook shows three columns instead of two. Four were
+  considered and left out: at ~360px the TLS and LND lines wrap.
 
 ## v0.4.1
 

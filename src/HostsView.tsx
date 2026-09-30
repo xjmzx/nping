@@ -435,8 +435,11 @@ export default function HostsView({ brand }: { brand: ReactNode }) {
             />
           </div>
         ) : (
-          <div className="grid gap-3 mx-auto grid-cols-1 max-w-[680px] lg:grid-cols-2 lg:max-w-[1400px] 2xl:grid-cols-3 2xl:max-w-[1880px]">
-            {rows.map((r) => (
+          // Three columns from xl (1280): a card at ~490px still fits its TLS
+          // and LND lines on one line each; four would wrap them. Cards follow
+          // the list view's sort; with none chosen, the stored order.
+          <div className="grid gap-3 mx-auto grid-cols-1 max-w-[680px] lg:grid-cols-2 lg:max-w-[1400px] xl:grid-cols-3 xl:max-w-[1880px]">
+            {items.map(({ row: r }) => (
               <HostCard
                 key={r.id}
                 row={r}
