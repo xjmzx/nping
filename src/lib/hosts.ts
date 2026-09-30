@@ -144,6 +144,12 @@ export function cleanHost(s: string): string {
   return h.replace(/^\[|\]$/g, "");
 }
 
+/** The name to show beside the address: none when it just repeats it. */
+export function shownName(r: { name: string; host: string }): string {
+  const name = r.name.trim();
+  return name && name.toLowerCase() !== cleanHost(r.host).toLowerCase() ? name : "";
+}
+
 /** The check switches, in the order the editor shows them. */
 export const CHECKS = [
   ["icmp", "Ping"],

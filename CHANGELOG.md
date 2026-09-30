@@ -12,9 +12,31 @@
 - **Cards follow the list view's sort.** Sort by renewal (or anything else)
   in the list, switch to cards, and they come in that order. With no sort
   chosen they keep the stored order, as before.
-- **Three host cards across from 1280px** (was 1536px), so a full-screen
-  window on a 14" MacBook shows three columns instead of two. Four were
-  considered and left out: at ~360px the TLS and LND lines wrap.
+- **One layout for both sections.** Relays and Hosts are now built from the
+  same pieces — header and toolbar, card grid, card (header, check rows,
+  detail, "checked … ago"), list table and footer — so they line up and
+  behave alike, and a layout change reaches both.
+  - Three cards across from 1280px (was 1536px) in both, with the same
+    gutters and widths; four were considered and left out, as the TLS and
+    LND lines wrap at ~360px.
+  - Cards size to their content: the relay card's fixed-height slots and
+    equal-height rows are gone, and its limits (payment / auth) sit in the
+    same run of chips as its NIPs.
+  - Both views follow the list's sort; with none, the stored order.
+  - One verb: **Check all** / "Check this relay" (was "Ping all"), and
+    "checked" (was "pinged") on relay cards.
+  - Check labels are one word (Connect · REQ · Info; the full name on
+    hover), which narrows the label column and gives the results the width.
+  - The relay card no longer repeats its connect time in the header.
+- **Host cards:** the header shows the name, then the address in grey — or
+  just the address when there's no name, or the name only repeats it. Name
+  and address are edited in the editor with the checks; a new host opens
+  there. The TLS protocol moved to the hover text (every host reports the
+  same one), and the Relay row leads with the relay's host.
+- **Lists:** a column shows only when some row has something for it (Flags),
+  and columns too wide for the window are left out rather than hidden. The
+  relay column carries the relay's own description after its url; hosts
+  have one Host column (name, then address) instead of Name and Host.
 
 ## v0.4.1
 

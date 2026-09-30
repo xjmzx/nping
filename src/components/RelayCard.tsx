@@ -1,19 +1,18 @@
-import { Plug, Radio, Info, RefreshCw, Trash2, Lock, Coins } from "lucide-react";
+import { Plug, Radio, Info, Lock, Coins } from "lucide-react";
 import { cn } from "../lib/cn";
-import { StatusDot, type Status } from "./StatusDot";
+import type { Status } from "./StatusDot";
 import type { RelayProbe } from "../lib/tauri";
-import { agoText, clockText } from "../lib/hosts";
+import { Card, CardHeader, CheckedAt, Checks, Detail, ErrorText, RowActions, StageRow } from "./Card";
 
 interface Props {
   url: string;
   probe?: RelayProbe;
   checking: boolean;
-  /** When `probe` was taken (epoch ms), and the clock to show its age by. */
-  pingedAt?: number;
-  /** Defaults to render time; pass a ticking value to keep "ago" fresh. */
-  now?: number;
+  /** When `probe` was taken (epoch ms). */
+  checkedAt?: number;
+  now: number;
   onChange: (url: string) => void;
-  onPing: () => void;
+  onCheck: () => void;
   onRemove: () => void;
 }
 
@@ -25,83 +24,35 @@ export function overallStatus(probe: RelayProbe | undefined, checking: boolean):
   return "ok";
 }
 
-export function StageRow({
-  icon,
-  label,
-  status,
-  children,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  status: Status;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="flex items-baseline gap-2.5">
-      <StatusDot status={status} size={8} className="translate-y-[1px]" />
-      <span className="flex items-center gap-1.5 w-28 shrink-0 whitespace-nowrap text-muted">
-        <span className="text-muted/70">{icon}</span>
-        {label}
-      </span>
-      <div className="flex-1 min-w-0 text-fg/80">{children}</div>
-    </div>
-  );
-}
-
-export function RelayCard({
-  url,
-  probe,
-  checking,
-  pingedAt,
-  now,
-  onChange,
-  onPing,
-  onRemove,
-}: Props) {
-  const overall = overallStatus(probe, checking);
-
-  const connectStatus: Status = checking
-    ? "checking"
-    : !probe
-      ? "idle"
-      : probe.connectOk
-        ? "ok"
-        : "fail";
-
-  const reqStatus: Status = checking
-    ? "checking"
-    : !probe
-      ? "idle"
-      : !probe.connectOk
-        ? "idle"
-        : probe.reqEose
-          ? "ok"
-          : "warn";
-
-  const infoStatus: Status = checking
-    ? "checking"
-    : !probe
-      ? "idle"
-      : probe.info
-        ? "ok"
-        : probe.infoError
-          ? "warn"
-          : "idle";
-
-  const expanded = checking || !!probe;
+export function RelayCard({ url, probe, checking, checkedAt, now, onChange, onCheck, onRemove }: Props) {
+  const pending = checking && !probe;
+  const step = (s: Status): Status => (checking ? "checking" : !probe ? "idle" : s);
+  const connectStatus = step(probe?.connectOk ? "ok" : "fail");
+  const reqStatus = step(!probe?.connectOk ? "idle" : probe.reqEose ? "ok" : "warn");
+  const infoStatus = step(probe?.info ? "ok" : probe?.infoError ? "warn" : "idle");
+  const info = probe?.info;
 
   return (
-    <div className="h-full rounded-xl bg-panel border border-surface/60 shadow-md p-3.5 flex flex-col gap-3">
-      {/* header: status + editable url + actions */}
-      <div className="flex items-center gap-2.5">
-        <StatusDot status={overall} size={12} />
+    <Card>
+      <CardHeader
+        status={overallStatus(probe, checking)}
+        actions={
+          <RowActions
+            checking={checking}
+            disabled={url.trim() === ""}
+            what="relay"
+            onCheck={onCheck}
+            onRemove={onRemove}
+          />
+        }
+      >
         <input
           value={url}
           spellCheck={false}
           placeholder="wss://relay.example.com"
           onChange={(e) => onChange(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === "Enter") onPing();
+            if (e.key === "Enter") onCheck();
           }}
           className={cn(
             "flex-1 min-w-0 bg-transparent font-mono text-sm text-fg",
@@ -109,58 +60,24 @@ export function RelayCard({
             "placeholder:text-muted/50 py-0.5",
           )}
         />
-        {probe && probe.connectMs != null && !checking && (
-          <span className="font-mono text-xs text-muted tabular-nums shrink-0">
-            {probe.connectMs} ms
-          </span>
-        )}
-        <button
-          onClick={onPing}
-          disabled={checking || url.trim() === ""}
-          title="Ping this relay"
-          className="p-1.5 rounded-md text-muted hover:text-accent hover:bg-fg/5 disabled:opacity-40 transition-colors"
-        >
-          <RefreshCw size={15} className={checking ? "animate-spin" : ""} />
-        </button>
-        <button
-          onClick={onRemove}
-          title="Remove relay"
-          className="p-1.5 rounded-md text-muted hover:text-alert hover:bg-fg/5 transition-colors"
-        >
-          <Trash2 size={15} />
-        </button>
-      </div>
+      </CardHeader>
 
-      {/* diagnostics */}
-      {expanded && (
-        <div className="flex-1 flex flex-col gap-2 text-sm pl-0.5">
+      {(checking || probe) && (
+        <Checks>
           <StageRow icon={<Plug size={13} />} label="Connect" status={connectStatus}>
-            {checking && !probe ? (
+            {pending ? (
               <span className="text-muted">Connecting…</span>
             ) : probe?.connectOk ? (
               <span>
-                Open
-                {probe.connectMs != null && (
-                  <span className="text-muted">
-                    {" "}
-                    · {probe.connectMs} ms
-                  </span>
-                )}
-              </span>
-            ) : probe?.connectError ? (
-              <span
-                title={probe.connectError}
-                className="block truncate text-alert font-mono text-xs"
-              >
-                {probe.connectError}
+                Open<span className="text-muted"> · {probe.connectMs} ms</span>
               </span>
             ) : (
-              <span className="text-muted">—</span>
+              <ErrorText text={probe?.connectError} tone="alert" />
             )}
           </StageRow>
 
-          <StageRow icon={<Radio size={13} />} label="Subscribe" status={reqStatus}>
-            {checking && !probe ? (
+          <StageRow icon={<Radio size={13} />} label="REQ" title="Subscribe (REQ) until EOSE" status={reqStatus}>
+            {pending ? (
               <span className="text-muted">Waiting for EOSE…</span>
             ) : !probe?.connectOk ? (
               <span className="text-muted">—</span>
@@ -169,127 +86,84 @@ export function RelayCard({
                 EOSE
                 <span className="text-muted">
                   {" "}
-                  · {probe.reqMs} ms · {probe.reqEvents}{" "}
-                  {probe.reqEvents === 1 ? "event" : "events"}
+                  · {probe.reqMs} ms · {probe.reqEvents} {probe.reqEvents === 1 ? "event" : "events"}
                 </span>
               </span>
-            ) : probe.reqError ? (
-              <span
-                title={probe.reqError}
-                className="block truncate text-warn font-mono text-xs"
-              >
-                {probe.reqError}
-              </span>
             ) : (
-              <span className="text-muted">—</span>
+              <ErrorText text={probe.reqError ?? probe.notice} tone="warn" />
             )}
           </StageRow>
 
-          <StageRow icon={<Info size={13} />} label="Info (NIP-11)" status={infoStatus}>
-            {checking && !probe ? (
+          <StageRow icon={<Info size={13} />} label="Info" title="Relay information document (NIP-11)" status={infoStatus}>
+            {pending ? (
               <span className="text-muted">Fetching…</span>
-            ) : probe?.info ? (
-              <span>
-                {probe.info.software ? (
-                  <span className="font-mono text-xs">
-                    {prettySoftware(probe.info.software)}
-                    {probe.info.version ? ` ${probe.info.version}` : ""}
-                  </span>
-                ) : probe.info.name ? (
-                  <span>{probe.info.name}</span>
-                ) : (
-                  <span className="text-muted">document available</span>
-                )}
-              </span>
-            ) : probe?.infoError ? (
-              <span
-                title={probe.infoError}
-                className="block truncate text-muted font-mono text-xs"
-              >
-                {probe.infoError}
-              </span>
+            ) : info ? (
+              info.software ? (
+                <span className="font-mono text-xs">
+                  {prettySoftware(info.software)}
+                  {info.version && <span className="text-muted"> {info.version}</span>}
+                </span>
+              ) : (
+                <span>{info.name ?? <span className="text-muted">document available</span>}</span>
+              )
             ) : (
-              <span className="text-muted">—</span>
+              <ErrorText text={probe?.infoError} tone="muted" />
             )}
           </StageRow>
 
-          {/* NIP-11 detail: supported NIPs + limitation badges. Description
-              and badges are fixed-height slots, rendered even when empty, and
-              the stage errors above are clamped to one line (full text on
-              hover), so the NIP chips line up across every card in the grid. */}
-          {probe?.info && (
-            <div className="pl-[34px] flex flex-col gap-2">
-              <p
-                title={probe.info.description ?? undefined}
-                className="text-xs text-muted leading-snug line-clamp-2 min-h-[33px]"
-              >
-                {probe.info.description}
-              </p>
-              <div className="flex flex-wrap gap-1.5 h-5 overflow-hidden">
-                  {probe.info.paymentRequired && (
-                    <Badge tone="warn" icon={<Coins size={11} />}>
-                      payment required
-                    </Badge>
-                  )}
-                  {probe.info.authRequired && (
-                    <Badge tone="mauve" icon={<Lock size={11} />}>
-                      auth required
-                    </Badge>
-                  )}
-              </div>
-              {probe.info.supportedNips.length > 0 && (
-                <div className="flex flex-wrap gap-1">
-                  {probe.info.supportedNips.map((n) => (
-                    <span
-                      key={n}
-                      title={`NIP-${pad2(n)}`}
-                      className="font-mono text-[10px] leading-none px-1.5 py-1 rounded bg-surface text-muted"
-                    >
-                      {pad2(n)}
-                    </span>
-                  ))}
-                </div>
+          {/* What the relay says about itself: its description, then any
+              limits and the NIPs it supports, as one run of chips. */}
+          {info && (info.description || info.supportedNips.length > 0 || info.paymentRequired || info.authRequired) && (
+            <Detail className="flex flex-col gap-2">
+              {info.description && (
+                <p title={info.description} className="text-xs text-muted leading-snug line-clamp-2">
+                  {info.description}
+                </p>
               )}
-            </div>
+              <div className="flex flex-wrap gap-1">
+                {info.paymentRequired && (
+                  <Badge tone="warn" icon={<Coins size={11} />}>
+                    payment required
+                  </Badge>
+                )}
+                {info.authRequired && (
+                  <Badge tone="mauve" icon={<Lock size={11} />}>
+                    auth required
+                  </Badge>
+                )}
+                {info.supportedNips.map((n) => (
+                  <span
+                    key={n}
+                    title={`NIP-${pad2(n)}`}
+                    className="font-mono text-[10px] leading-none px-1.5 py-1 rounded bg-surface text-muted"
+                  >
+                    {pad2(n)}
+                  </span>
+                ))}
+              </div>
+            </Detail>
           )}
 
-          {/* a NOTICE the relay sent during the subscription */}
-          {probe?.notice && (
-            <div title={probe.notice} className="pl-[34px] text-xs text-warn/90 truncate">
-              NOTICE: {probe.notice}
-            </div>
+          {/* a NOTICE the relay sent during a subscription that otherwise worked */}
+          {probe?.notice && probe.reqEose && (
+            <Detail className="text-xs text-warn/90 truncate">
+              <span title={probe.notice}>NOTICE: {probe.notice}</span>
+            </Detail>
           )}
 
-          {!checking && pingedAt != null && (
-            <div
-              title={new Date(pingedAt).toLocaleString()}
-              className="pl-[34px] mt-auto text-[11px] text-muted/70"
-            >
-              pinged {clockText(pingedAt)} · {agoText(pingedAt, now ?? Date.now())}
-            </div>
-          )}
-        </div>
+          {!checking && checkedAt != null && <CheckedAt at={checkedAt} now={now} />}
+        </Checks>
       )}
-    </div>
+    </Card>
   );
 }
 
-function Badge({
-  tone,
-  icon,
-  children,
-}: {
-  tone: "warn" | "mauve";
-  icon: React.ReactNode;
-  children: React.ReactNode;
-}) {
+function Badge({ tone, icon, children }: { tone: "warn" | "mauve"; icon: React.ReactNode; children: React.ReactNode }) {
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded border",
-        tone === "warn"
-          ? "border-warn/40 text-warn"
-          : "border-mauve/40 text-mauve",
+        "inline-flex items-center gap-1 text-[10px] leading-none px-1.5 py-0.5 rounded border",
+        tone === "warn" ? "border-warn/40 text-warn" : "border-mauve/40 text-mauve",
       )}
     >
       {icon}

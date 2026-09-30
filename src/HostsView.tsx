@@ -1,13 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { Plus, Zap, FileInput, Server, LayoutGrid, List } from "lucide-react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Server } from "lucide-react";
 import { cn } from "./lib/cn";
-import {
-  exportRelays,
-  importRelays,
-  probeHost,
-  probeRelay,
-  type HostProbe,
-} from "./lib/tauri";
+import { exportRelays, importRelays, probeHost, probeRelay, type HostProbe } from "./lib/tauri";
 import {
   NEW_HOST,
   exportJson,
@@ -24,38 +18,28 @@ import {
   renewalDays,
   renewalText,
 } from "./lib/hosts";
-import { compareValues, type SortDir } from "./lib/relays";
-import { HostTable, hostSortValue, type HostItem, type HostSortKey } from "./components/HostTable";
+import { compareValues } from "./lib/relays";
+import { useColumns, useNow, useSort, useStoredView, useToast } from "./lib/ui";
+import { hostColumns, hostSortValue, type HostItem, type HostSortKey } from "./components/HostTable";
 import { HostCard, hostOverall } from "./components/HostCard";
+import { CardGrid, RowActions } from "./components/Card";
+import { DataTable } from "./components/DataTable";
+import {
+  AddButton,
+  CheckAllButton,
+  Counts,
+  Empty,
+  ImportButton,
+  Section,
+  ToastText,
+  ViewToggle,
+  tally,
+} from "./components/Section";
 import { ExportButton, SyncStatus } from "./components/SyncStatus";
 import { useExportSync } from "./lib/sync";
 
 const STORAGE_KEY = "nping.hosts";
 const VIEW_KEY = "nping.hostsView";
-
-type View = "cards" | "list";
-
-function loadView(): View {
-  try {
-    return localStorage.getItem(VIEW_KEY) === "list" ? "list" : "cards";
-  } catch {
-    return "cards";
-  }
-}
-
-// Matches Tailwind's lg breakpoint, where the list's secondary columns show.
-const MQ_WIDE = "(min-width: 1024px)";
-
-function useWide(): boolean {
-  const [wide, setWide] = useState(() => window.matchMedia(MQ_WIDE).matches);
-  useEffect(() => {
-    const m = window.matchMedia(MQ_WIDE);
-    const update = () => setWide(m.matches);
-    m.addEventListener("change", update);
-    return () => m.removeEventListener("change", update);
-  }, []);
-  return wide;
-}
 // Last result per host id — kept apart from the list so an export never
 // carries results, and a corrupt entry can't lose the hosts themselves.
 const RESULTS_KEY = "nping.hostResults";
@@ -96,32 +80,12 @@ export default function HostsView({ brand }: { brand: ReactNode }) {
   const [results, setResults] = useState<Record<string, StoredResult>>(loadResults);
   const [checking, setChecking] = useState<Record<string, boolean>>({});
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [view, setView] = useState<View>(loadView);
-  const [sortKey, setSortKey] = useState<HostSortKey | null>(null);
-  const [sortDir, setSortDir] = useState<SortDir>("asc");
+  const [view, setView] = useStoredView(VIEW_KEY);
+  const { sortKey, sortDir, onSort } = useSort<HostSortKey>();
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const wide = useWide();
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(VIEW_KEY, view);
-    } catch {
-      /* the view is a convenience */
-    }
-  }, [view]);
-  const [toast, setToast] = useState<{ text: string; tone: "ok" | "alert" } | null>(null);
-  // Ticks the "checked 3 min ago" lines.
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    const t = setInterval(() => setNow(Date.now()), 30_000);
-    return () => clearInterval(t);
-  }, []);
-
-  useEffect(() => {
-    if (!toast) return;
-    const t = setTimeout(() => setToast(null), 6000);
-    return () => clearTimeout(t);
-  }, [toast]);
+  const [toast, setToast] = useToast();
+  const now = useNow();
+  const wide = useColumns() > 1;
 
   useEffect(() => {
     try {
@@ -214,10 +178,12 @@ export default function HostsView({ brand }: { brand: ReactNode }) {
     }
   }, []);
 
+  // A new host opens in the editor — in the list view, as an opened row.
   const addRow = useCallback(() => {
     const id = newId();
     setRows((rs) => [...rs, { ...NEW_HOST, id }]);
     setEditingId(id);
+    setExpandedId(id);
   }, []);
 
   const removeRow = useCallback((id: string) => {
@@ -236,7 +202,7 @@ export default function HostsView({ brand }: { brand: ReactNode }) {
     } catch (e) {
       setToast({ text: `Export failed: ${String(e)}`, tone: "alert" });
     }
-  }, []);
+  }, [setToast]);
 
   // Import merges: hosts already listed (by hostname) are skipped.
   const doImport = useCallback(async () => {
@@ -268,23 +234,11 @@ export default function HostsView({ brand }: { brand: ReactNode }) {
     } catch (e) {
       setToast({ text: `Import failed: ${e instanceof Error ? e.message : String(e)}`, tone: "alert" });
     }
-  }, []);
+  }, [setToast]);
 
   const anyChecking = Object.values(checking).some(Boolean);
 
-  // First click sorts ascending (status: failures first; renewal: soonest
-  // first); second flips; third returns to your own order.
-  const onSort = useCallback(
-    (key: HostSortKey) => {
-      if (sortKey !== key) {
-        setSortKey(key);
-        setSortDir("asc");
-      } else if (sortDir === "asc") setSortDir("desc");
-      else setSortKey(null);
-    },
-    [sortKey, sortDir],
-  );
-
+  // In the chosen sort, cards and list alike; with none, your own order.
   const items: HostItem[] = useMemo(() => {
     const list = rows.map((r) => ({
       row: r,
@@ -297,6 +251,8 @@ export default function HostsView({ brand }: { brand: ReactNode }) {
       compareValues(hostSortValue(sortKey, a, now), hostSortValue(sortKey, b, now), sortDir),
     );
   }, [rows, results, checking, sortKey, sortDir, now]);
+
+  const columns = useMemo(() => hostColumns(now), [now]);
 
   // Annual cost per currency, and the renewal that comes up next.
   const money = useMemo(() => {
@@ -319,183 +275,111 @@ export default function HostsView({ brand }: { brand: ReactNode }) {
     return { cost, next };
   }, [rows, now]);
 
-  const summary = useMemo(() => {
-    const n = { ok: 0, warn: 0, fail: 0 };
-    for (const r of rows) {
-      const res = results[r.id];
-      const s = hostOverall(res?.probe, res?.relay, !!checking[r.id], r);
-      if (s === "ok" || s === "warn" || s === "fail") n[s]++;
-    }
-    return n;
-  }, [rows, results, checking]);
+  const counts = useMemo(() => tally(items.map((it) => it.status)), [items]);
 
-  // The full card for a host — the cards view's tiles, and the list view's
-  // expanded row.
-  const renderCard = (id: string) => {
-    const r = rows.find((x) => x.id === id);
-    if (!r) return null;
-    return (
-      <HostCard
-        row={r}
-        probe={results[r.id]?.probe}
-        relay={results[r.id]?.relay}
-        checkedAt={results[r.id]?.at}
-        now={now}
-        checking={!!checking[r.id]}
-        editing={editingId === r.id}
-        onChange={(patch) => update(r.id, patch)}
-        onCheck={() => void checkOne(r.id)}
-        onEdit={() => setEditingId((cur) => (cur === r.id ? null : r.id))}
-        onRemove={() => removeRow(r.id)}
-      />
-    );
-  };
+  // The full card: the cards view's tiles, and the list view's opened row.
+  const card = ({ row: r }: HostItem) => (
+    <HostCard
+      row={r}
+      probe={results[r.id]?.probe}
+      relay={results[r.id]?.relay}
+      checkedAt={results[r.id]?.at}
+      now={now}
+      checking={!!checking[r.id]}
+      editing={editingId === r.id}
+      onChange={(patch) => update(r.id, patch)}
+      onCheck={() => void checkOne(r.id)}
+      onEdit={() => setEditingId((cur) => (cur === r.id ? null : r.id))}
+      onRemove={() => removeRow(r.id)}
+    />
+  );
+
+  const listed = view === "list" && rows.length > 0;
 
   return (
-    <div className="flex-1 min-h-0 flex flex-col">
-      <header className="flex items-center gap-3 px-5 py-4 border-b border-surface/60">
-        {brand}
-        <div className="ml-auto flex items-center gap-2">
-          <div className="flex rounded-md bg-surface p-0.5">
-            {(
-              [
-                ["cards", LayoutGrid, "Card view"],
-                ["list", List, "List view — one line per host"],
-              ] as const
-            ).map(([v, Icon, label]) => (
-              <button
-                key={v}
-                onClick={() => setView(v)}
-                title={label}
-                className={cn(
-                  "p-1.5 rounded transition-colors",
-                  view === v ? "bg-bg text-accent" : "text-muted hover:text-fg",
-                )}
-              >
-                <Icon size={16} />
-              </button>
-            ))}
-          </div>
-          <button
-            onClick={() => void doImport()}
-            title="Import hosts from JSON (merges; skips ones already listed)"
-            className="p-2 rounded-md text-muted hover:text-fg hover:bg-fg/5 transition-colors"
-          >
-            <FileInput size={16} />
-          </button>
+    <Section
+      brand={brand}
+      flushTop={listed}
+      controls={
+        <>
+          <ViewToggle view={view} onChange={setView} />
+          <ImportButton what="hosts" onClick={() => void doImport()} />
           <ExportButton
             stale={sync.stale}
             disabled={rows.length === 0}
             record={sync.record}
             onClick={() => void doExport()}
           />
-          <button
-            onClick={addRow}
-            title="Add a host"
-            className="flex items-center gap-1.5 px-3 py-2 rounded-md text-sm text-fg bg-surface hover:bg-surfaceHover transition-colors"
-          >
-            <Plus size={16} />
-            Add
-          </button>
-          <button
+          <AddButton what="host" onClick={addRow} />
+          <CheckAllButton
+            busy={anyChecking}
+            disabled={rows.every((r) => r.host.trim() === "")}
             onClick={checkAll}
-            disabled={anyChecking || rows.every((r) => r.host.trim() === "")}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium text-bg bg-accent hover:bg-accent/90 disabled:opacity-40 transition-colors"
-          >
-            <Zap size={16} className={anyChecking ? "animate-pulse" : ""} />
-            Check all
-          </button>
-        </div>
-      </header>
-
-      {/* The list view's top padding sits inside the scrolled content, not on
-          main — padding on main sits above the sticky header (see Relays). */}
-      <main className={cn("flex-1 overflow-y-auto px-5 pb-4", view === "list" && rows.length > 0 ? "" : "pt-4")}>
-        {rows.length === 0 ? (
-          <div className="text-center text-muted text-sm py-16 flex flex-col items-center gap-3">
-            <Server size={28} className="text-muted/50" />
-            <span>
-              No hosts. Click <span className="text-fg">Add</span> or import a JSON list.
+          />
+        </>
+      }
+      footer={
+        <>
+          <Counts total={rows.length} noun="host" {...counts} />
+          {money.cost && (
+            <span className="tabular-nums whitespace-nowrap hidden lg:inline" title="Total annual cost, per currency">
+              {money.cost} / yr
             </span>
-          </div>
-        ) : view === "list" ? (
-          <div className="max-w-[1400px] mx-auto pt-4">
-            <HostTable
-              items={items}
-              sortKey={sortKey}
-              sortDir={sortDir}
-              onSort={onSort}
-              expandedId={expandedId}
-              onToggle={(id) => setExpandedId((cur) => (cur === id ? null : id))}
-              onCheck={(id) => void checkOne(id)}
-              onRemove={removeRow}
-              renderCard={(id) => renderCard(id)}
-              now={now}
-              wide={wide}
+          )}
+          {money.next && (
+            <span
+              className={cn(
+                "tabular-nums truncate min-w-0",
+                money.next.days < 0 ? "text-alert" : money.next.days <= 30 ? "text-warn" : "",
+              )}
+              title={`Next hosting renewal: ${money.next.name}`}
+            >
+              <span className="hidden lg:inline">next renewal: </span>
+              {money.next.name} {renewalText(money.next.days)}
+            </span>
+          )}
+          <SyncStatus savedFlash={sync.savedFlash} stale={sync.stale} record={sync.record} />
+          <ToastText toast={toast} />
+        </>
+      }
+    >
+      {rows.length === 0 ? (
+        <Empty>
+          <Server size={28} className="text-muted/50" />
+          <span>
+            No hosts. Click <span className="text-fg">Add</span> or import a JSON list.
+          </span>
+        </Empty>
+      ) : view === "list" ? (
+        <DataTable
+          columns={columns}
+          items={items}
+          id={(it) => it.row.id}
+          sortKey={sortKey}
+          sortDir={sortDir}
+          onSort={onSort}
+          expandedId={expandedId}
+          onToggle={(id) => setExpandedId((cur) => (cur === id ? null : id))}
+          wide={wide}
+          actions={(it) => (
+            <RowActions
+              small
+              checking={it.checking}
+              disabled={it.row.host.trim() === ""}
+              what="host"
+              onCheck={() => void checkOne(it.row.id)}
+              onRemove={() => removeRow(it.row.id)}
             />
-          </div>
-        ) : (
-          // Three columns from xl (1280): a card at ~490px still fits its TLS
-          // and LND lines on one line each; four would wrap them. Cards follow
-          // the list view's sort; with none chosen, the stored order.
-          <div className="grid gap-3 mx-auto grid-cols-1 max-w-[680px] lg:grid-cols-2 lg:max-w-[1400px] xl:grid-cols-3 xl:max-w-[1880px]">
-            {items.map(({ row: r }) => (
-              <HostCard
-                key={r.id}
-                row={r}
-                probe={results[r.id]?.probe}
-                relay={results[r.id]?.relay}
-                checkedAt={results[r.id]?.at}
-                now={now}
-                checking={!!checking[r.id]}
-                editing={editingId === r.id}
-                onChange={(patch) => update(r.id, patch)}
-                onCheck={() => void checkOne(r.id)}
-                onEdit={() => setEditingId((cur) => (cur === r.id ? null : r.id))}
-                onRemove={() => removeRow(r.id)}
-              />
-            ))}
-          </div>
-        )}
-      </main>
-
-      <footer className="px-5 py-2.5 border-t border-surface/60 text-xs text-muted flex items-center gap-4">
-        <span className="whitespace-nowrap">
-          {rows.length} host{rows.length === 1 ? "" : "s"}
-        </span>
-        <div className="flex items-center gap-3 font-mono tabular-nums whitespace-nowrap">
-          {summary.ok > 0 && <span className="text-ok">{summary.ok} ok</span>}
-          {summary.warn > 0 && <span className="text-warn">{summary.warn} warn</span>}
-          {summary.fail > 0 && <span className="text-alert">{summary.fail} fail</span>}
-        </div>
-        {money.cost && (
-          <span className="tabular-nums whitespace-nowrap hidden lg:inline" title="Total annual cost, per currency">
-            {money.cost} / yr
-          </span>
-        )}
-        {money.next && (
-          <span
-            className={cn(
-              "tabular-nums truncate min-w-0",
-              money.next.days < 0 ? "text-alert" : money.next.days <= 30 ? "text-warn" : "",
-            )}
-            title={`Next hosting renewal: ${money.next.name}`}
-          >
-            <span className="hidden lg:inline">next renewal: </span>
-            {money.next.name} {renewalText(money.next.days)}
-          </span>
-        )}
-        <SyncStatus savedFlash={sync.savedFlash} stale={sync.stale} record={sync.record} />
-        {toast && (
-          <span
-            className={cn("truncate", toast.tone === "alert" ? "text-alert" : "text-fg/80")}
-            title={toast.text}
-          >
-            {toast.text}
-          </span>
-        )}
-        <span className="ml-auto opacity-60 whitespace-nowrap hidden lg:inline">ndisc suite</span>
-      </footer>
-    </div>
+          )}
+          expanded={card}
+        />
+      ) : (
+        <CardGrid>
+          {items.map((it) => (
+            <Fragment key={it.row.id}>{card(it)}</Fragment>
+          ))}
+        </CardGrid>
+      )}
+    </Section>
   );
 }

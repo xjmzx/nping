@@ -5,21 +5,17 @@ import {
   ShieldCheck,
   Radio,
   Zap,
-  RefreshCw,
-  Trash2,
   SlidersHorizontal,
   FileText,
   Cpu,
   CalendarClock,
 } from "lucide-react";
 import { cn } from "../lib/cn";
-import { StatusDot, type Status } from "./StatusDot";
-import { StageRow } from "./RelayCard";
+import type { Status } from "./StatusDot";
+import { Card, CardHeader, CheckedAt, Checks, ErrorText, IconButton, RowActions, StageRow } from "./Card";
 import { shortError } from "../lib/relays";
 import {
-  agoText,
   certStatus,
-  clockText,
   dateText,
   daysText,
   hostStatuses,
@@ -30,6 +26,7 @@ import {
   portPasses,
   shortIssuer,
   hasNotes,
+  shownName,
   specsLine,
   costText,
   renewalDays,
@@ -86,68 +83,40 @@ export function HostCard({
     checking ? "checking" : (st?.[k] ?? "idle");
 
   const rules = parsePortRules(row.ports);
+  const name = shownName(row);
   const shown = checking || !!probe;
 
   return (
-    <div className="h-full rounded-xl bg-panel border border-surface/60 shadow-md p-3.5 flex flex-col gap-3">
-      {/* header: status + name / host + actions */}
-      <div className="flex items-center gap-2.5">
-        <StatusDot status={overall} size={12} />
-        <div className="flex-1 min-w-0 flex items-baseline gap-2">
-          <input
-            value={row.name}
-            spellCheck={false}
-            placeholder="name"
-            onChange={(e) => onChange({ name: e.target.value })}
-            className={cn(
-              "w-28 shrink-0 bg-transparent text-sm font-medium text-fg",
-              "border-b border-transparent focus:border-accent/50 focus:outline-none",
-              "placeholder:text-muted/50 py-0.5",
-            )}
-          />
-          <input
-            value={row.host}
-            spellCheck={false}
-            placeholder="host.example.com or IP"
-            onChange={(e) => onChange({ host: e.target.value })}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") onCheck();
-            }}
-            className={cn(
-              "flex-1 min-w-0 bg-transparent font-mono text-sm text-fg/80",
-              "border-b border-transparent focus:border-accent/50 focus:outline-none",
-              "placeholder:text-muted/50 py-0.5",
-            )}
-          />
-        </div>
-        <button
-          onClick={onEdit}
-          title="Checks for this host"
-          className={cn(
-            "p-1.5 rounded-md hover:bg-fg/5 transition-colors",
-            editing ? "text-accent" : "text-muted hover:text-fg",
-          )}
+    <Card>
+      {/* The name, then the address in grey — or the address alone. Both are
+          edited in the editor (sliders), with the checks. */}
+      <CardHeader
+        status={overall}
+        actions={
+          <>
+            <IconButton onClick={onEdit} title="Edit this host and its checks" active={editing}>
+              <SlidersHorizontal size={15} />
+            </IconButton>
+            <RowActions
+              checking={checking}
+              disabled={row.host.trim() === ""}
+              what="host"
+              onCheck={onCheck}
+              onRemove={onRemove}
+            />
+          </>
+        }
+      >
+        {name && <span className="shrink-0 text-sm font-medium text-fg">{name}</span>}
+        <span
+          className={cn("min-w-0 truncate font-mono text-sm", name ? "text-muted" : "text-fg")}
+          title={row.host}
         >
-          <SlidersHorizontal size={15} />
-        </button>
-        <button
-          onClick={onCheck}
-          disabled={checking || row.host.trim() === ""}
-          title="Check this host"
-          className="p-1.5 rounded-md text-muted hover:text-accent hover:bg-fg/5 disabled:opacity-40 transition-colors"
-        >
-          <RefreshCw size={15} className={checking ? "animate-spin" : ""} />
-        </button>
-        <button
-          onClick={onRemove}
-          title="Remove host"
-          className="p-1.5 rounded-md text-muted hover:text-alert hover:bg-fg/5 transition-colors"
-        >
-          <Trash2 size={15} />
-        </button>
-      </div>
+          {row.host || <span className="text-muted/50">new host</span>}
+        </span>
+      </CardHeader>
 
-      {editing && <Editor row={row} onChange={onChange} />}
+      {editing && <Editor row={row} onChange={onChange} onCheck={onCheck} />}
 
       {!editing && hasNotes(row.notes) && <NotesSummary notes={row.notes} now={now} />}
 
@@ -156,7 +125,7 @@ export function HostCard({
       )}
 
       {shown && !probe?.error && (
-        <div className="flex flex-col gap-2 text-sm pl-0.5">
+        <Checks>
           <StageRow icon={<Globe size={13} />} label="DNS" status={s("dns")}>
             {checking ? (
               <span className="text-muted">Resolving…</span>
@@ -245,9 +214,8 @@ export function HostCard({
                 <div className="flex flex-col gap-0.5 min-w-0">
                   <CertLine
                     cert={probe.tls.cert}
-                    extra={[probe.tls.protocol, probe.tls.name !== probe.host ? probe.tls.name : null]
-                      .filter(Boolean)
-                      .join(" · ")}
+                    extra={probe.tls.name !== probe.host ? probe.tls.name : null}
+                    protocol={probe.tls.protocol}
                   />
                   {probe.tls.verifyError && <ErrorText text={probe.tls.verifyError} tone="alert" />}
                 </div>
@@ -323,11 +291,16 @@ export function HostCard({
                   <RelayHost url={row.relay} />
                 </div>
               ) : relay.reqEose ? (
-                <span className="block truncate" title={row.relay.trim()}>
-                  EOSE
+                // The relay's host first: if the line runs out of room, the
+                // timings are what gets cut.
+                <span
+                  className="block truncate"
+                  title={`${row.relay.trim()}\nconnect ${relay.connectMs} ms · REQ ${relay.reqMs} ms`}
+                >
+                  {relayHost(row.relay)}
                   <span className="text-muted">
                     {" "}
-                    · connect {relay.connectMs} ms · REQ {relay.reqMs} ms · {relayHost(row.relay)}
+                    · EOSE · {relay.connectMs} ms · {relay.reqMs} ms
                   </span>
                 </span>
               ) : (
@@ -408,17 +381,10 @@ export function HostCard({
             </StageRow>
           )}
 
-          {!checking && checkedAt != null && (
-            <div
-              title={new Date(checkedAt).toLocaleString()}
-              className="pl-[34px] text-[11px] text-muted/70"
-            >
-              checked {clockText(checkedAt)} · {agoText(checkedAt, now)}
-            </div>
-          )}
-        </div>
+          {!checking && checkedAt != null && <CheckedAt at={checkedAt} now={now} />}
+        </Checks>
       )}
-    </div>
+    </Card>
   );
 }
 
@@ -447,37 +413,17 @@ function RelayHost({ url }: { url: string }) {
   );
 }
 
-function ErrorText({
-  text,
-  tone,
-  short,
-}: {
-  text: string | null | undefined;
-  tone: "alert" | "warn";
-  short?: boolean;
-}) {
-  if (!text) return <span className="text-muted">—</span>;
-  // Wrapped, not truncated: the error is the point of the row.
-  return (
-    <span
-      title={text}
-      className={cn(
-        "block break-words font-mono text-xs leading-snug",
-        tone === "alert" ? "text-alert" : "text-warn",
-      )}
-    >
-      {short ? shortError(text) : text}
-    </span>
-  );
-}
-
 function CertLine({
   cert,
   extra,
+  protocol,
   selfSigned,
 }: {
   cert: CertInfo;
   extra?: string | null;
+  /** On hover only: every host reports the same one, so on the line it only
+   *  costs width. */
+  protocol?: string | null;
   selfSigned?: boolean;
 }) {
   const status = certStatus(cert);
@@ -487,6 +433,7 @@ function CertLine({
     `valid    ${dateText(cert.notBefore)} → ${dateText(cert.notAfter)}`,
     cert.sans.length ? `names    ${cert.sans.join(", ")}` : "",
     `sha256   ${cert.sha256}`,
+    protocol ? `protocol ${protocol}` : "",
   ]
     .filter(Boolean)
     .join("\n");
@@ -507,13 +454,17 @@ function CertLine({
 function Editor({
   row,
   onChange,
+  onCheck,
 }: {
   row: HostFields;
   onChange: (patch: Partial<HostFields>) => void;
+  onCheck: () => void;
 }) {
   const field = (
     label: string,
     key:
+      | "name"
+      | "host"
       | "ports"
       | "tls"
       | "tlsName"
@@ -534,6 +485,8 @@ function Editor({
         spellCheck={false}
         placeholder={placeholder}
         onChange={(e) => onChange({ [key]: e.target.value })}
+        onKeyDown={key === "host" ? (e) => e.key === "Enter" && onCheck() : undefined}
+        autoFocus={key === "host" && row.host === ""}
         className={cn(
           "px-2 py-1 rounded bg-surface font-mono text-xs text-fg",
           "placeholder:text-muted/50 focus:outline-none focus:ring-1 focus:ring-accent/50",
@@ -543,6 +496,8 @@ function Editor({
   );
   return (
     <div className="grid grid-cols-2 gap-x-3 gap-y-2 rounded-lg bg-bg/40 p-2.5">
+      {field("Name", "name", "optional", "A short name for the card and the list")}
+      {field("Host", "host", "host.example.com or IP", "Hostname or IP address — Enter checks it")}
       {/* Check switches: off keeps the settings but skips the check and
           hides its row — for a service that isn't set up yet. */}
       <div className="col-span-2 flex flex-wrap gap-1.5 pb-1">
