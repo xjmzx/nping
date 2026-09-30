@@ -43,14 +43,20 @@ export function probeRelay(url: string): Promise<RelayProbe> {
 
 /** Save the relay-list JSON via a native save dialog. Resolves to the path
  *  written, or null if the user cancelled. */
-export function exportRelays(contents: string, fileName?: string): Promise<string | null> {
-  return invoke("export_relays", { contents, fileName });
+export function exportRelays(
+  contents: string,
+  fileName?: string,
+  lastPath?: string | null,
+): Promise<string | null> {
+  return invoke("export_relays", { contents, fileName, lastPath: lastPath ?? null });
 }
 
-/** Read a JSON file the user picks in a native open dialog. Resolves to its
- *  text, or null if the user cancelled. */
-export function importRelays(): Promise<string | null> {
-  return invoke("import_relays");
+/** Read a JSON file the user picks in a native open dialog, which starts in
+ *  `lastPath`'s folder when given. Null if the user cancelled. */
+export function importRelays(
+  lastPath?: string | null,
+): Promise<{ path: string; contents: string } | null> {
+  return invoke("import_relays", { lastPath: lastPath ?? null });
 }
 
 // ── hosts ────────────────────────────────────────────────────────────────

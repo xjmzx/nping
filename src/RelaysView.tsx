@@ -10,7 +10,6 @@ import {
   Search,
   X,
   FileInput,
-  FileOutput,
 } from "lucide-react";
 import { cn } from "./lib/cn";
 import { exportRelays, importRelays, probeRelay, type RelayProbe } from "./lib/tauri";
@@ -26,6 +25,8 @@ import {
 } from "./lib/relays";
 import { RelayCard, overallStatus } from "./components/RelayCard";
 import { RelayTable, type TableItem } from "./components/RelayTable";
+import { ExportButton, SyncStatus } from "./components/SyncStatus";
+import { useExportSync } from "./lib/sync";
 
 const DEFAULT_RELAYS = [
   "wss://relay.fizx.uk",
@@ -275,6 +276,15 @@ export default function RelaysView({ brand }: { brand: ReactNode }) {
   const rowsRef = useRef(rows);
   rowsRef.current = rows;
 
+  const exported = useMemo(() => exportJson(rows.map((r) => r.url)), [rows]);
+  const sync = useExportSync(
+    "nping.relaysSync",
+    exported,
+    rows.every((r) => r.url.trim() === ""),
+  );
+  const syncRef = useRef(sync);
+  syncRef.current = sync;
+
   const pingOne = useCallback(async (id: string) => {
     const row = rowsRef.current.find((r) => r.id === id);
     if (!row || row.url.trim() === "") return;
@@ -336,8 +346,12 @@ export default function RelaysView({ brand }: { brand: ReactNode }) {
 
   const doExport = useCallback(async () => {
     try {
-      const path = await exportRelays(exportJson(rowsRef.current.map((r) => r.url)));
-      if (path) setToast({ text: `Exported to ${path}`, tone: "ok" });
+      const json = exportJson(rowsRef.current.map((r) => r.url));
+      const path = await exportRelays(json, undefined, syncRef.current.record?.path);
+      if (path) {
+        syncRef.current.markSynced(json, path, "export");
+        setToast({ text: `Exported to ${path}`, tone: "ok" });
+      }
     } catch (e) {
       setToast({ text: `Export failed: ${String(e)}`, tone: "alert" });
     }
@@ -347,9 +361,10 @@ export default function RelaysView({ brand }: { brand: ReactNode }) {
   // repeated within the file) are skipped.
   const doImport = useCallback(async () => {
     try {
-      const text = await importRelays();
-      if (text == null) return;
-      const urls = parseImport(text);
+      const file = await importRelays(syncRef.current.record?.path);
+      if (file == null) return;
+      const urls = parseImport(file.contents);
+      const wasEmpty = rowsRef.current.every((r) => r.url.trim() === "");
       const have = new Set(rowsRef.current.map((r) => relayKey(r.url)));
       const fresh: Row[] = [];
       for (const url of urls) {
@@ -359,6 +374,8 @@ export default function RelaysView({ brand }: { brand: ReactNode }) {
         fresh.push({ id: newId(), url });
       }
       setRows((rs) => [...rs, ...fresh]);
+      if (wasEmpty) syncRef.current.markSynced(exportJson(fresh.map((r) => r.url)), file.path, "import");
+      else syncRef.current.rememberPath(file.path);
       const skipped = urls.length - fresh.length;
       setToast({
         text:
@@ -472,14 +489,12 @@ export default function RelaysView({ brand }: { brand: ReactNode }) {
           >
             <FileInput size={16} />
           </button>
-          <button
-            onClick={() => void doExport()}
+          <ExportButton
+            stale={sync.stale}
             disabled={rows.length === 0}
-            title="Export relays to JSON"
-            className="p-2 rounded-md text-muted hover:text-fg hover:bg-fg/5 disabled:opacity-40 transition-colors"
-          >
-            <FileOutput size={16} />
-          </button>
+            record={sync.record}
+            onClick={() => void doExport()}
+          />
           <button
             onClick={resetDefaults}
             title="Restore default relays"
@@ -575,6 +590,7 @@ export default function RelaysView({ brand }: { brand: ReactNode }) {
             )}
           </div>
         )}
+        <SyncStatus savedFlash={sync.savedFlash} stale={sync.stale} record={sync.record} />
         {toast && (
           <span
             className={cn("truncate", toast.tone === "alert" ? "text-alert" : "text-fg/80")}

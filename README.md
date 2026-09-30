@@ -66,9 +66,14 @@ installed app and a separate one for `make dev` builds, so the two never share
 lists. Keys: `nping.relays`, `nping.hosts`, `nping.hostResults`, `nping.view`,
 `nping.mode`.
 
-Import and export go through native file dialogs and remember nothing: no last
-path, no default file, no auto-load. Import **merges** (entries already listed
-are skipped); export writes the list only, never results.
+Import and export go through native file dialogs, which start where the last
+export or import was (keys `nping.hostsSync` / `nping.relaysSync`). There's no
+auto-load. Import **merges** (entries already listed are skipped); export
+writes the list only, never results.
+
+Every edit is saved as you type. The footer says "✓ saved" after each one,
+and whether the last export still matches the list; the export button shows
+a dot while it doesn't.
 
 ## Stack
 

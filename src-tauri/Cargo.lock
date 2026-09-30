@@ -2110,7 +2110,7 @@ dependencies = [
 
 [[package]]
 name = "nping"
-version = "0.4.0"
+version = "0.4.1"
 dependencies = [
  "rustls 0.23.41",
  "serde",

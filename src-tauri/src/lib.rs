@@ -383,15 +383,24 @@ async fn export_relays(
     app: tauri::AppHandle,
     contents: String,
     file_name: Option<String>,
+    last_path: Option<String>,
 ) -> Result<Option<String>, String> {
     use tauri_plugin_dialog::DialogExt;
-    let Some(fp) = app
-        .dialog()
-        .file()
-        .add_filter("JSON", &["json"])
-        .set_file_name(file_name.as_deref().unwrap_or("nping-relays.json"))
-        .blocking_save_file()
-    else {
+    // Start where the last export went, under its name, when it's still
+    // there; otherwise the suggested name in the dialog's own default folder.
+    let last = last_path.map(std::path::PathBuf::from);
+    let mut dialog = app.dialog().file().add_filter("JSON", &["json"]);
+    match last.as_ref().filter(|p| p.parent().is_some_and(|d| d.is_dir())) {
+        Some(p) => {
+            dialog = dialog.set_directory(p.parent().unwrap());
+            let name = p.file_name().and_then(|n| n.to_str()).unwrap_or("nping.json");
+            dialog = dialog.set_file_name(name);
+        }
+        None => {
+            dialog = dialog.set_file_name(file_name.as_deref().unwrap_or("nping-relays.json"));
+        }
+    }
+    let Some(fp) = dialog.blocking_save_file() else {
         return Ok(None);
     };
     let path = fp.into_path().map_err(|e| e.to_string())?;
@@ -399,22 +408,39 @@ async fn export_relays(
     Ok(Some(path.display().to_string()))
 }
 
-/// Read a user-chosen JSON file. `Ok(None)` if the dialog was cancelled.
+/// Read a user-chosen JSON file, returning its path too. `Ok(None)` if the
+/// dialog was cancelled.
 #[tauri::command]
-async fn import_relays(app: tauri::AppHandle) -> Result<Option<String>, String> {
+async fn import_relays(
+    app: tauri::AppHandle,
+    last_path: Option<String>,
+) -> Result<Option<Imported>, String> {
     use tauri_plugin_dialog::DialogExt;
-    let Some(fp) = app
-        .dialog()
-        .file()
-        .add_filter("JSON", &["json"])
-        .blocking_pick_file()
-    else {
+    let mut dialog = app.dialog().file().add_filter("JSON", &["json"]);
+    // Open in the folder of the last export/import, when it still exists.
+    if let Some(dir) = last_path
+        .map(std::path::PathBuf::from)
+        .and_then(|p| p.parent().map(|d| d.to_path_buf()))
+        .filter(|d| d.is_dir())
+    {
+        dialog = dialog.set_directory(dir);
+    }
+    let Some(fp) = dialog.blocking_pick_file() else {
         return Ok(None);
     };
     let path = fp.into_path().map_err(|e| e.to_string())?;
-    std::fs::read_to_string(&path)
-        .map(Some)
-        .map_err(|e| format!("{}: {e}", path.display()))
+    let contents =
+        std::fs::read_to_string(&path).map_err(|e| format!("{}: {e}", path.display()))?;
+    Ok(Some(Imported {
+        path: path.display().to_string(),
+        contents,
+    }))
+}
+
+#[derive(serde::Serialize)]
+struct Imported {
+    path: String,
+    contents: String,
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]

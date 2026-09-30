@@ -1,6 +1,6 @@
 [package]
 name = "nping"
-version = "0.4.0"
+version = "0.4.1"
 description = "Nostr relay connectivity tester for the ndisc suite"
 authors = ["xjmzx"]
 edition = "2021"

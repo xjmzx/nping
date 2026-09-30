@@ -1,5 +1,32 @@
 # Changelog
 
+## v0.4.1
+
+### Added
+
+- **Hosts list view.** The Hosts header gets the same card / list toggle as
+  Relays. One line per host: status, name, host, every enabled check as a
+  coloured pip, specs, when it was last checked, the renewal countdown and
+  the annual cost. Sortable — renewal sorts soonest first, "checked" stalest
+  first. A row click expands the full card. Below 1024px the specs, checked
+  and cost columns drop out.
+- **Money in the footer:** total annual cost per currency and the next
+  renewal due (amber within 30 days, red once lapsed).
+- **Save / export feedback**, in both views. Edits were always saved as you
+  typed; now the footer says so ("✓ saved"). It also says whether the last
+  export still matches the list ("in sync with export · 14:02" / "changed
+  since last export"), and the export button carries a dot while it doesn't.
+  Only what an export writes counts — check results never make it stale.
+  Importing into an empty list counts as in sync.
+- **Dialogs remember where you were.** Export starts in the folder, and under
+  the name, of the last export; import opens in that folder too.
+
+### Changed
+
+- The Linux release ships the `.deb` only. The AppImage bundled its own
+  webkit2gtk (~80 MB against the `.deb`'s ~6 MB); other distros can build from
+  source.
+
 ## v0.4.0
 
 ### Added
