@@ -12,10 +12,42 @@ import type { CertInfo, HostProbe, HostSpec, HttpResult, RelayProbe, TcpResult }
  *  half-edited value isn't thrown away; they're parsed when a check runs.
  *  A port written `!22` is expected to be CLOSED — it passes when the
  *  connection is refused or times out, and fails if it's ever open. */
+/** Your own notes on a machine — what it is and what it costs. Free text,
+ *  never probed or sent anywhere; travels with the hosts JSON export. */
+export interface HostNotes {
+  os: string;
+  /** Country code, e.g. "DE". */
+  location: string;
+  memoryMb: string;
+  cores: string;
+  storageGb: string;
+  /** Monthly transfer allowance. */
+  trafficGb: string;
+  /** Currency code, e.g. "EUR". */
+  currency: string;
+  /** Per year. */
+  cost: string;
+  /** YYYY-MM-DD. */
+  renewal: string;
+}
+
+export const EMPTY_NOTES: HostNotes = {
+  os: "",
+  location: "",
+  memoryMb: "",
+  cores: "",
+  storageGb: "",
+  trafficGb: "",
+  currency: "",
+  cost: "",
+  renewal: "",
+};
+
 export interface HostRow {
   id: string;
   name: string;
   host: string;
+  notes: HostNotes;
   // Which checks run. Switching one off keeps its settings, hides its row and
   // leaves it out of the host's status — for a service not set up yet.
   icmp: boolean;
@@ -61,6 +93,7 @@ export const NEW_HOST: HostFields = {
   lndP2p: "",
   lndRest: "",
   lndOnion: "",
+  notes: EMPTY_NOTES,
 };
 
 /** A certificate this close to expiry turns its check amber. */
@@ -141,6 +174,7 @@ export function active(r: HostFields) {
  *  existed behave as they did. */
 export function withDefaults(o: Partial<HostRow>): HostFields {
   const r = { ...NEW_HOST, ...o };
+  r.notes = { ...EMPTY_NOTES, ...(o.notes ?? {}) };
   const has = (k: keyof HostRow) => typeof o[k] === "boolean";
   if (!has("portsOn")) r.portsOn = r.ports.trim() !== "";
   if (!has("tlsOn")) r.tlsOn = r.tls.trim() !== "";
@@ -214,6 +248,7 @@ export function parseImport(text: string): HostFields[] {
       lndP2p: str(o.lndP2p, ""),
       lndRest: str(o.lndRest, ""),
       lndOnion: str(o.lndOnion, ""),
+      notes: parseNotes(o.notes),
     };
     // Drop the unset switches so withDefaults can infer them.
     for (const k of Object.keys(row) as (keyof HostRow)[]) if (row[k] === undefined) delete row[k];
@@ -365,4 +400,87 @@ export function clockText(at: number): string {
   const hm = d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   const today = new Date().toDateString() === d.toDateString();
   return today ? hm : `${d.toLocaleDateString([], { day: "numeric", month: "short" })} ${hm}`;
+}
+
+// ── hosting notes ────────────────────────────────────────────────────────
+
+function parseNotes(v: unknown): HostNotes {
+  const out = { ...EMPTY_NOTES };
+  if (v && typeof v === "object") {
+    const o = v as Record<string, unknown>;
+    for (const k of Object.keys(out) as (keyof HostNotes)[]) {
+      const x = o[k];
+      if (typeof x === "string") out[k] = x;
+      else if (typeof x === "number") out[k] = String(x);
+    }
+  }
+  return out;
+}
+
+export function hasNotes(n: HostNotes): boolean {
+  return Object.values(n).some((v) => v.trim() !== "");
+}
+
+/** "2048" MB → "2 GB"; "512" → "512 MB". Non-numbers pass through. */
+function mb(v: string): string {
+  const n = Number(v);
+  if (!v.trim() || !Number.isFinite(n)) return v.trim();
+  return n >= 1024 ? `${+(n / 1024).toFixed(1)} GB` : `${n} MB`;
+}
+
+/** "4096" GB → "4 TB"; "72" → "72 GB". */
+function gb(v: string): string {
+  const n = Number(v);
+  if (!v.trim() || !Number.isFinite(n)) return v.trim();
+  return n >= 1024 ? `${+(n / 1024).toFixed(1)} TB` : `${n} GB`;
+}
+
+/** "Debian 12 · DE · 2 GB RAM · 2 cores · 72 GB disk · 4 TB/mo" */
+export function specsLine(n: HostNotes): string {
+  const cores = n.cores.trim();
+  return [
+    n.os.trim(),
+    n.location.trim().toUpperCase(),
+    n.memoryMb.trim() && `${mb(n.memoryMb)} RAM`,
+    cores && `${cores} ${cores === "1" ? "core" : "cores"}`,
+    n.storageGb.trim() && `${gb(n.storageGb)} disk`,
+    n.trafficGb.trim() && `${gb(n.trafficGb)}/mo`,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+}
+
+/** "EUR 48 / yr" */
+export function costText(n: HostNotes): string {
+  const cost = n.cost.trim();
+  if (!cost) return "";
+  return `${n.currency.trim().toUpperCase()} ${cost}`.trim() + " / yr";
+}
+
+/** A renewal inside this many days turns amber. */
+export const RENEWAL_WARN_DAYS = 30;
+
+/** Days from today to the renewal date (negative once past), or null when
+ *  the date isn't a valid YYYY-MM-DD. */
+export function renewalDays(renewal: string, now: number): number | null {
+  const m = renewal.trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return null;
+  const due = Date.UTC(+m[1], +m[2] - 1, +m[3]);
+  if (Number.isNaN(due)) return null;
+  const d = new Date(now);
+  const today = Date.UTC(d.getFullYear(), d.getMonth(), d.getDate());
+  return Math.round((due - today) / 86_400_000);
+}
+
+export function renewalStatus(days: number | null): Status {
+  if (days == null) return "idle";
+  if (days < 0) return "fail";
+  if (days <= RENEWAL_WARN_DAYS) return "warn";
+  return "ok";
+}
+
+export function renewalText(days: number): string {
+  if (days < 0) return `lapsed ${-days} d ago`;
+  if (days === 0) return "renews today";
+  return `in ${days} d`;
 }

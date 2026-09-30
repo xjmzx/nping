@@ -9,6 +9,8 @@ import {
   Trash2,
   SlidersHorizontal,
   FileText,
+  Cpu,
+  CalendarClock,
 } from "lucide-react";
 import { cn } from "../lib/cn";
 import { StatusDot, type Status } from "./StatusDot";
@@ -27,7 +29,14 @@ import {
   formatPortRules,
   portPasses,
   shortIssuer,
+  hasNotes,
+  specsLine,
+  costText,
+  renewalDays,
+  renewalStatus,
+  renewalText,
   type HostFields,
+  type HostNotes,
 } from "../lib/hosts";
 import type { CertInfo, HostProbe, RelayProbe } from "../lib/tauri";
 
@@ -139,6 +148,8 @@ export function HostCard({
       </div>
 
       {editing && <Editor row={row} onChange={onChange} />}
+
+      {!editing && hasNotes(row.notes) && <NotesSummary notes={row.notes} now={now} />}
 
       {probe?.error && !checking && (
         <div className="text-xs font-mono text-alert pl-0.5">{probe.error}</div>
@@ -564,6 +575,10 @@ function Editor({
           "Onion address, or paste the full URI from `lncli getinfo`. Dialled through Tor at 127.0.0.1:9050 — the outside view of a node whose clearnet ports are firewalled. Takes a few seconds.",
           true,
         )}
+      <NotesEditor
+        notes={row.notes}
+        onChange={(patch) => onChange({ notes: { ...row.notes, ...patch } })}
+      />
     </div>
   );
 }
@@ -602,5 +617,93 @@ function PortChips({ ports, onChange }: { ports: string; onChange: (ports: strin
         </span>
       ))}
     </div>
+  );
+}
+
+/** The two notes lines on the card: specs, then cost + renewal countdown. */
+function NotesSummary({ notes, now }: { notes: HostNotes; now: number }) {
+  const specs = specsLine(notes);
+  const cost = costText(notes);
+  const days = renewalDays(notes.renewal, now);
+  const rs = renewalStatus(days);
+  return (
+    <div className="flex flex-col gap-1 text-xs text-muted pl-0.5 border-t border-surface/60 pt-2.5">
+      {specs && (
+        <div className="flex items-baseline gap-2">
+          <Cpu size={12} className="shrink-0 translate-y-[1px] text-muted/70" />
+          <span className="break-words">{specs}</span>
+        </div>
+      )}
+      {(cost || notes.renewal.trim()) && (
+        <div className="flex items-baseline gap-2">
+          <CalendarClock size={12} className="shrink-0 translate-y-[1px] text-muted/70" />
+          <span className="break-words">
+            {cost}
+            {cost && notes.renewal.trim() && " · "}
+            {notes.renewal.trim() &&
+              (days == null ? (
+                <span title="Use YYYY-MM-DD">renews {notes.renewal.trim()}</span>
+              ) : (
+                <>
+                  renews {notes.renewal.trim()}{" "}
+                  <span
+                    className={cn(
+                      rs === "fail" && "text-alert",
+                      rs === "warn" && "text-warn",
+                      rs === "ok" && "text-fg/70",
+                    )}
+                  >
+                    ({renewalText(days)})
+                  </span>
+                </>
+              ))}
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function NotesEditor({
+  notes,
+  onChange,
+}: {
+  notes: HostNotes;
+  onChange: (patch: Partial<HostNotes>) => void;
+}) {
+  const f = (label: string, key: keyof HostNotes, placeholder: string, wide?: boolean) => (
+    <label className={cn("flex flex-col gap-1", wide && "col-span-2")}>
+      <span className="text-[11px] text-muted">{label}</span>
+      <input
+        value={notes[key]}
+        spellCheck={false}
+        placeholder={placeholder}
+        onChange={(e) => onChange({ [key]: e.target.value })}
+        className={cn(
+          "px-2 py-1 rounded bg-surface font-mono text-xs text-fg",
+          "placeholder:text-muted/50 focus:outline-none focus:ring-1 focus:ring-accent/50",
+        )}
+      />
+    </label>
+  );
+  const heading = (text: string) => (
+    <div className="col-span-2 pt-2 mt-1 border-t border-surface/60 text-[11px] font-medium text-fg/70">
+      {text}
+    </div>
+  );
+  return (
+    <>
+      {heading("Specs")}
+      {f("OS / version", "os", "Debian 12")}
+      {f("Location", "location", "DE")}
+      {f("Memory (MB)", "memoryMb", "2048")}
+      {f("Cores", "cores", "2")}
+      {f("Storage (GB)", "storageGb", "72")}
+      {f("Traffic (GB / month)", "trafficGb", "4096")}
+      {heading("Hosting")}
+      {f("Currency", "currency", "EUR")}
+      {f("Annual cost", "cost", "48")}
+      {f("Renewal date", "renewal", "YYYY-MM-DD", true)}
+    </>
   );
 }

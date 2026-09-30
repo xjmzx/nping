@@ -48,6 +48,13 @@ was taken ("checked 14:02 · 3 min ago"), so an old result reads as old.
 Changing what a host probes drops its result; renaming it, or turning `22`
 into `!22`, doesn't.
 
+**Hosting notes** — two sections in each host's settings, for your own
+records: *Specs* (OS, location, memory, cores, storage, monthly traffic) and
+*Hosting* (currency, annual cost, renewal date). The card shows them as two
+summary lines; the renewal counts down, amber within 30 days and red once
+lapsed. Notes never affect the host's status and are never sent anywhere —
+they travel only in the hosts JSON export.
+
 No hosts ship with the app. The list is stored locally and moves between
 machines by JSON export/import.
 

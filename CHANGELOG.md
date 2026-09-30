@@ -28,6 +28,10 @@
 - **Results survive a restart**, for hosts and relays, with the time they were
   taken ("checked 14:02 · 3 min ago" / "pinged …"). Editing what a host checks
   drops its result; renaming, removing a port or flipping `22` → `!22` don't.
+- **Hosting notes** per host: Specs (OS, location, memory, cores, storage,
+  traffic) and Hosting (currency, annual cost, renewal date), shown as two
+  summary lines on the card. The renewal counts down — amber within 30 days,
+  red once lapsed. Local only; exported with the host list.
 - Host list JSON import/export (`nping-hosts.json`); no hosts ship with the app.
 - Header tagline on wide windows: "relay pings · service checks for VPS hosts".
 
