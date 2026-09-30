@@ -365,38 +365,54 @@ export default function RelaysView({ brand }: { brand: ReactNode }) {
       flushTop={listed}
       controls={
         <>
-          <div className="relative">
-            <Search
-              size={14}
-              className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted pointer-events-none"
-            />
-            <input
-              ref={searchRef}
-              value={query}
-              spellCheck={false}
-              placeholder="Search  (/)"
-              title={"Filter relays by url, software or description.\nnip:42 — relays that list NIP-42\nis:ok · is:warn · is:fail · is:dup"}
-              onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Escape") {
-                  setQuery("");
-                  e.currentTarget.blur();
-                }
-              }}
+          {/* Below md the box is just its icon, and opens leftwards over the
+              brand while focused or holding a query; from md up it sits in
+              the row at full width. */}
+          <div className="relative shrink-0 h-8 w-8 md:w-40 lg:w-64">
+            <div
               className={cn(
-                "w-40 lg:w-64 pl-8 pr-7 py-2 rounded-md bg-surface text-sm text-fg",
-                "placeholder:text-muted/60 focus:outline-none focus:ring-1 focus:ring-accent/50",
+                // Open, it stops short of the section switch: 23.5rem is the
+                // header's left padding + switch + gap, and the controls to
+                // the right of the box. Add a control here and grow it.
+                "absolute right-0 inset-y-0 z-10 w-full max-md:focus-within:w-[min(14rem,calc(100vw-23.5rem))]",
+                query && "max-md:w-[min(14rem,calc(100vw-23.5rem))]",
               )}
-            />
-            {query && (
-              <button
-                onClick={() => setQuery("")}
-                title="Clear search"
-                className="absolute right-1.5 top-1/2 -translate-y-1/2 p-0.5 rounded text-muted hover:text-fg"
-              >
-                <X size={14} />
-              </button>
-            )}
+            >
+              <Search
+                size={14}
+                className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted pointer-events-none"
+              />
+              <input
+                ref={searchRef}
+                value={query}
+                spellCheck={false}
+                placeholder="Search  (/)"
+                title={"Filter relays by url, software or description.\nnip:42 — relays that list NIP-42\nis:ok · is:warn · is:fail · is:dup"}
+                onChange={(e) => setQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Escape") {
+                    setQuery("");
+                    e.currentTarget.blur();
+                  }
+                }}
+                className={cn(
+                  "w-full h-full pl-8 pr-7 rounded-md bg-surface text-sm text-fg",
+                  "placeholder:text-muted/60 focus:outline-none focus:ring-1 focus:ring-accent/50",
+                  // Collapsed, the left padding alone is the icon's 32px square.
+                  !query && "max-md:pr-0 max-md:focus:pr-7",
+                  "max-md:placeholder:text-transparent max-md:focus:placeholder:text-muted/60",
+                )}
+              />
+              {query && (
+                <button
+                  onClick={() => setQuery("")}
+                  title="Clear search"
+                  className="absolute right-1.5 top-1/2 -translate-y-1/2 p-0.5 rounded text-muted hover:text-fg"
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </div>
           </div>
           <ViewToggle view={view} onChange={setView} />
           <ImportButton what="relays" onClick={() => void doImport()} />

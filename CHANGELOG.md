@@ -1,5 +1,22 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- **The Relays header fits the default window on Linux.** GNOME's text
+  scaling (1.25x here) leaves the 720px window 576 CSS px wide, and the
+  toolbar ran off the right edge. Below 768 CSS px the search box is now its
+  icon (it opens over the brand while focused or holding a query; `/` still
+  focuses it) and Add / Check all drop their labels. The minimum window width
+  is 600 (was 480), the narrowest the Relays header fits.
+- **Both headers are the same height.** No header control wraps its label any
+  more (Check all went to two lines at some widths), and the search box is the
+  32px of the controls beside it, so the brand no longer jumps when you switch
+  sections.
+- **Check labels sit on their results' baseline.** They rode ~4px high: the
+  label took its baseline from its icon's bottom edge.
+
 ## v0.4.2
 
 The first release with the 2026-09-29 icon export (v0.4.1 shipped the old

@@ -132,8 +132,12 @@ export function StageRow({
   return (
     <div className="flex items-baseline gap-2.5">
       <StatusDot status={status} size={8} className="translate-y-[1px]" />
-      <span title={title} className="flex items-center gap-1.5 w-20 shrink-0 whitespace-nowrap text-muted">
-        <span className="text-muted/70">{icon}</span>
+      {/* Baseline, not center: the row lines up on text baselines, and a
+          centred flex box takes its baseline from the icon's bottom edge,
+          which lifted every label ~4px above its result. The icon centres
+          itself instead. */}
+      <span title={title} className="flex items-baseline gap-1.5 w-20 shrink-0 whitespace-nowrap text-muted">
+        <span className="self-center text-muted/70">{icon}</span>
         {label}
       </span>
       <div className="flex-1 min-w-0 text-fg/80">{children}</div>

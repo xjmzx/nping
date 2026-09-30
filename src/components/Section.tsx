@@ -24,9 +24,14 @@ export function Section({
 }) {
   return (
     <div className="flex-1 min-h-0 flex flex-col">
-      <header className="flex items-center gap-3 px-5 py-4 border-b border-surface/60">
+      {/* One row, never wrapped: a button that wraps its label makes this
+          section's header taller than the other's, and the brand jumps when
+          you switch. Linux's text scaling (GNOME 1.25x) leaves the default
+          720px window only 576 CSS px, so the controls shrink to icons below
+          md instead of wrapping or scrolling sideways. */}
+      <header className="flex items-center gap-3 px-4 md:px-5 py-4 border-b border-surface/60 whitespace-nowrap">
         {brand}
-        <div className="ml-auto flex items-center gap-2">{controls}</div>
+        <div className="ml-auto flex items-center gap-1.5 md:gap-2 shrink-0">{controls}</div>
       </header>
       <main className={cn("flex-1 overflow-y-auto px-5 pb-4", !flushTop && "pt-4")}>
         {flushTop ? <div className="max-w-[1880px] mx-auto pt-4">{children}</div> : children}
@@ -100,10 +105,10 @@ export function AddButton({ what, onClick }: { what: string; onClick: () => void
     <button
       onClick={onClick}
       title={`Add a ${what}`}
-      className="flex items-center gap-1.5 px-3 py-2 rounded-md text-sm text-fg bg-surface hover:bg-surfaceHover transition-colors"
+      className="flex items-center gap-1.5 px-2.5 md:px-3 py-2 rounded-md text-sm text-fg bg-surface hover:bg-surfaceHover transition-colors"
     >
       <Plus size={16} />
-      Add
+      <span className="hidden md:inline">Add</span>
     </button>
   );
 }
@@ -121,10 +126,11 @@ export function CheckAllButton({
     <button
       onClick={onClick}
       disabled={busy || disabled}
-      className="flex items-center gap-1.5 px-3 py-2 rounded-md text-sm font-medium text-bg bg-accent hover:bg-accent/90 disabled:opacity-40 transition-colors"
+      title="Check all"
+      className="flex items-center gap-1.5 px-2.5 md:px-3 py-2 rounded-md text-sm font-medium text-bg bg-accent hover:bg-accent/90 disabled:opacity-40 transition-colors"
     >
       <Zap size={16} className={busy ? "animate-pulse" : ""} />
-      Check all
+      <span className="hidden md:inline">Check all</span>
     </button>
   );
 }
