@@ -1,14 +1,17 @@
 # Changelog
 
-## Unreleased
+## v0.4.2
+
+The first release with the 2026-09-29 icon export (v0.4.1 shipped the old
+icon).
 
 ### Changed
 
 - **The Relay row names the relay it checked.** A host card's Relay row now
-  ends with the relay's hostname ("EOSE · connect 80 ms · REQ 40 ms ·
-  relay.example.com"), and shows it under an error too; the full url is on
-  hover. A healthy result alone couldn't tell you whose relay answered, so a
-  url copied from another host looked fine.
+  leads with the relay's hostname ("relay.example.com · EOSE · 80 ms ·
+  40 ms"), and shows it under an error too; the full url is on hover. A
+  healthy result alone couldn't tell you whose relay answered, so a url
+  copied from another host looked fine.
 - **Cards follow the list view's sort.** Sort by renewal (or anything else)
   in the list, switch to cards, and they come in that order. With no sort
   chosen they keep the stored order, as before.
@@ -22,7 +25,6 @@
   - Cards size to their content: the relay card's fixed-height slots and
     equal-height rows are gone, and its limits (payment / auth) sit in the
     same run of chips as its NIPs.
-  - Both views follow the list's sort; with none, the stored order.
   - One verb: **Check all** / "Check this relay" (was "Ping all"), and
     "checked" (was "pinged") on relay cards.
   - Check labels are one word (Connect · REQ · Info; the full name on
