@@ -59,13 +59,14 @@ export default function App() {
       <button
         onClick={() => setUpleb((v) => !v)}
         title="Toggle theme"
-        className="text-2xl font-bold tracking-tight select-none"
+        className="text-2xl font-bold tracking-tight select-none shrink-0"
       >
         <span className="text-accent">n</span>
         <span className="text-mauve">ping</span>
       </button>
-      {/* Hidden below lg: the relay header's controls need the width. */}
-      <span className="text-xs text-muted hidden lg:inline truncate">
+      {/* Hidden below lg, and the first thing to give way above it: the
+          relay header's controls need the width. */}
+      <span className="text-xs text-muted hidden lg:inline min-w-0 truncate">
         relay pings · service checks for VPS hosts
       </span>
     </>
