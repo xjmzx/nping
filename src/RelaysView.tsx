@@ -32,7 +32,7 @@ import { ExportButton, SyncStatus } from "./components/SyncStatus";
 import { useExportSync } from "./lib/sync";
 
 const DEFAULT_RELAYS = [
-  "wss://relay.fizx.uk",
+  "wss://relay.nfunc.xyz",
   "wss://relay.damus.io",
   "wss://nos.lol",
 ];
@@ -42,6 +42,11 @@ const VIEW_KEY = "nping.view";
 // Last result per relay url, so a restart doesn't blank the list. Keyed by
 // url (not row id — ids are per session), kept apart from the list itself.
 const RESULTS_KEY = "nping.relayResults";
+// One-shot: relay.fizx.uk was decommissioned (its host no longer resolves), so
+// a list saved while it was a default drops it once. Flagged so a relay you
+// add back by hand afterwards is left alone — this is a tester.
+const FIZX_DROPPED_KEY = "nping.migrated.fizxRelayDropped";
+const DEAD_RELAY = "wss://relay.fizx.uk";
 
 interface StoredRelayResult {
   at: number;
@@ -88,7 +93,12 @@ function loadRows(): Row[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
-      const urls = JSON.parse(raw) as string[];
+      let urls = JSON.parse(raw) as string[];
+      if (Array.isArray(urls) && !localStorage.getItem(FIZX_DROPPED_KEY)) {
+        urls = urls.filter((u) => typeof u !== "string" || relayKey(u) !== DEAD_RELAY);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(urls));
+        localStorage.setItem(FIZX_DROPPED_KEY, "1");
+      }
       if (Array.isArray(urls) && urls.length) {
         return urls.map((url) => ({ id: newId(), url }));
       }

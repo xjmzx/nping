@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- **relay.fizx.uk is out of the default list.** The fizx.uk server is gone
+  (the host no longer resolves); the defaults are now `relay.nfunc.xyz`, the
+  suite's own relay, plus `relay.damus.io` and `nos.lol`. A saved list drops
+  `relay.fizx.uk` once on first launch — a list left empty falls back to the
+  defaults — and a relay added back by hand afterwards is kept.
+
 ## v0.4.3
 
 ### Fixed

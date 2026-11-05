@@ -2,7 +2,7 @@
 
 A small Nostr relay connectivity tester — part of the **ndisc** suite.
 
-Edit a list of relay URLs (prepopulated with `relay.fizx.uk`, `relay.damus.io`,
+Edit a list of relay URLs (prepopulated with `relay.nfunc.xyz`, `relay.damus.io`,
 `nos.lol`) and ping them. Each relay reports three checks with per-stage
 indicators and verbatim errors for working out connectivity issues:
 
