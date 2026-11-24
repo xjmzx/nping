@@ -1,5 +1,22 @@
 # Changelog
 
+## v0.4.5 — 2026-11-24
+
+### Added — update check on the version chip
+
+nping had no version chip; it now has the suite's, beside the wordmark. The chip checks GitHub once a day for a newer published release (pre-release
+tags never count). When one exists, a dot appears on the chip's corner;
+clicking the chip opens a popover with the status, a link to the release page,
+**Check now**, and a **Check daily** switch to turn it off. Notify-only:
+nothing is downloaded or installed. Vendored from ndisc
+(`src/lib/updateCheck.ts`, `src/components/VersionChip.tsx`,
+`src/components/TickBox.tsx`); only `APP_REPO` differs.
+
+### Changed — new icon
+
+New icon master from the suite's icon set; the raster set is regenerated from
+it (`make icons`).
+
 ## v0.4.4 — 2026-11-05
 
 ### Changed

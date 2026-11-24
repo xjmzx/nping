@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { Radio, Server } from "lucide-react";
+import { getVersion } from "@tauri-apps/api/app";
 import { cn } from "./lib/cn";
+import { VersionChip } from "./components/VersionChip";
 import RelaysView from "./RelaysView";
 import HostsView from "./HostsView";
 
@@ -22,6 +24,13 @@ function loadMode(): Mode {
 export default function App() {
   const [mode, setMode] = useState<Mode>(loadMode);
   const [upleb, setUpleb] = useState(false);
+  const [appVersion, setAppVersion] = useState<string | null>(null);
+
+  useEffect(() => {
+    getVersion()
+      .then(setAppVersion)
+      .catch(() => setAppVersion(null));
+  }, []);
 
   useEffect(() => {
     try {
@@ -64,6 +73,7 @@ export default function App() {
         <span className="text-accent">n</span>
         <span className="text-mauve">ping</span>
       </button>
+      {appVersion && <VersionChip version={appVersion} />}
       {/* Hidden below lg, and the first thing to give way above it: the
           relay header's controls need the width. */}
       <span className="text-xs text-muted hidden lg:inline min-w-0 truncate">
